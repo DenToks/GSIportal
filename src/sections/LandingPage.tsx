@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, MoreHorizontal, Mountain, Layers, TreePine, Building2, ScanLine, MapPin, CheckCircle2, X } from 'lucide-react';
+import { ArrowRight, MoreHorizontal, Mountain, Layers, TreePine, Building2, ScanLine, MapPin, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
