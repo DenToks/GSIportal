@@ -1,11 +1,39 @@
-import { ArrowRight, MoreHorizontal, Mountain, Layers, TreePine, Building2, ScanLine } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, MoreHorizontal, Mountain, Layers, TreePine, Building2, ScanLine, MapPin, CheckCircle2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface LandingPageProps {
   onEnterPortal: () => void;
 }
+
+const EMPTY_QUOTE = {
+  fullName: '',
+  company: '',
+  email: '',
+  phone: '',
+  projectType: '',
+  timeline: '',
+  location: '',
+  description: '',
+};
 
 const services = [
   {
@@ -75,6 +103,23 @@ const clients = ['DPWH', 'DOTr', 'MMDA', 'Suntrust', 'CDC', 'GNPower'];
 const navLinks = ['SERVICES', 'PROJECTS', 'ABOUT US', 'INSIGHTS'];
 
 export function LandingPage({ onEnterPortal }: LandingPageProps) {
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState(EMPTY_QUOTE);
+
+  const setField = <K extends keyof typeof EMPTY_QUOTE>(key: K, value: string) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
+  };
+
+  const handleClose = () => {
+    setQuoteOpen(false);
+    setTimeout(() => { setSubmitted(false); setForm(EMPTY_QUOTE); }, 300);
+  };
   return (
     <div className="min-h-screen bg-white font-sans">
 
@@ -109,6 +154,7 @@ export function LandingPage({ onEnterPortal }: LandingPageProps) {
             </Button>
             <Button
               className="bg-[#0f172a] hover:bg-slate-700 text-white text-xs font-bold tracking-widest px-5 rounded-md"
+              onClick={() => setQuoteOpen(true)}
             >
               REQUEST QUOTE
             </Button>
@@ -305,6 +351,114 @@ export function LandingPage({ onEnterPortal }: LandingPageProps) {
           </div>
         </div>
       </footer>
+
+      {/* ── Request a Quote Dialog ── */}
+      <Dialog open={quoteOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                <img src="/logo.png" alt="GSI" width={24} height={24} className="object-contain" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-blue-600 uppercase">Geoinnovative Inc.</p>
+                <DialogTitle className="text-xl font-bold text-slate-800 leading-tight">Request a Quote</DialogTitle>
+              </div>
+            </div>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Tell us about your project requirements and our engineering team will get back to you with a detailed proposal within 48 business hours.
+            </p>
+          </DialogHeader>
+
+          {submitted ? (
+            <div className="py-10 text-center space-y-3">
+              <CheckCircle2 className="w-14 h-14 text-green-500 mx-auto" />
+              <h3 className="text-lg font-bold text-slate-800">Request Submitted!</h3>
+              <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                Thank you! Our team will review your inquiry and reach out within 48 business hours.
+              </p>
+              <Button className="mt-2 bg-blue-600 hover:bg-blue-700" onClick={handleClose}>
+                Close
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="q-name">Full Name <span className="text-red-500">*</span></Label>
+                  <Input id="q-name" value={form.fullName} onChange={e => setField('fullName', e.target.value)} placeholder="e.g. Robert Jensen" required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="q-company">Company / Organization</Label>
+                  <Input id="q-company" value={form.company} onChange={e => setField('company', e.target.value)} placeholder="e.g. Infrastructure Corp." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="q-email">Email Address <span className="text-red-500">*</span></Label>
+                  <Input id="q-email" type="email" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="robert@example.com" required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="q-phone">Phone Number</Label>
+                  <Input id="q-phone" value={form.phone} onChange={e => setField('phone', e.target.value)} placeholder="+63 917 000 0000" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Project Type <span className="text-red-500">*</span></Label>
+                  <Select value={form.projectType} onValueChange={v => setField('projectType', v)} required>
+                    <SelectTrigger><SelectValue placeholder="Select project type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Geotechnical Investigation">Geotechnical Investigation</SelectItem>
+                      <SelectItem value="Geohazard Assessment">Geohazard Assessment</SelectItem>
+                      <SelectItem value="Civil Infrastructure Study">Civil Infrastructure Study</SelectItem>
+                      <SelectItem value="Environmental Assessment">Environmental Assessment</SelectItem>
+                      <SelectItem value="Geoscience & Mapping">Geoscience & Mapping</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Estimated Timeline</Label>
+                  <Select value={form.timeline} onValueChange={v => setField('timeline', v)}>
+                    <SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Less than 1 month">Less than 1 month</SelectItem>
+                      <SelectItem value="1-3 months">1–3 months</SelectItem>
+                      <SelectItem value="3-6 months">3–6 months</SelectItem>
+                      <SelectItem value="6+ months">6+ months</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="q-location">Project Location</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input id="q-location" value={form.location} onChange={e => setField('location', e.target.value)} placeholder="Enter site address or coordinates" className="pl-9" />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="q-desc">Project Description / Message <span className="text-red-500">*</span></Label>
+                <Textarea
+                  id="q-desc"
+                  value={form.description}
+                  onChange={e => setField('description', e.target.value)}
+                  placeholder="Please provide specific technical requirements, soil conditions (if known), and scope of work..."
+                  rows={4}
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="ghost" className="text-slate-600 font-bold tracking-wide" onClick={handleClose}>
+                  CANCEL
+                </Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold tracking-wide px-6">
+                  SUBMIT REQUEST
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
