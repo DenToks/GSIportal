@@ -76,6 +76,24 @@ function buildMenu(role: Role, pendingApprovalsCount: number): MenuItem[] {
     ];
   }
 
+  if (role === 'Supervisor') {
+    return [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'projects', label: 'Projects', icon: FolderKanban },
+      { id: 'staff', label: 'Staff Assignment', icon: Users },
+      { id: 'reports', label: 'Reports', icon: FileBarChart },
+    ];
+  }
+
+  if (role === 'Project Manager') {
+    return [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'projects', label: 'My Projects', icon: FolderKanban },
+      { id: 'tasks', label: 'Tasks', icon: ClipboardList },
+      { id: 'reports', label: 'Reports', icon: FileBarChart },
+    ];
+  }
+
   const base: MenuItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Projects', icon: FolderKanban },

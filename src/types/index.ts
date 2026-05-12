@@ -25,6 +25,7 @@ export interface Project {
   startDate: string;
   endDate: string;
   manager: string;
+  assignedPMId?: string;
   team: string[];
   description: string;
   location: string;

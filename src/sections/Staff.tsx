@@ -243,10 +243,12 @@ export function Staff({
           <h1 className="text-2xl font-bold text-slate-800">Staff &amp; Team</h1>
           <p className="text-slate-500">Manage staff assignments and workload distribution.</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setStaffForm(EMPTY_STAFF_FORM); setAddStaffOpen(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Staff
-        </Button>
+        {currentUser.role === 'Admin' && (
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setStaffForm(EMPTY_STAFF_FORM); setAddStaffOpen(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Staff
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -385,12 +387,13 @@ export function Staff({
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button
-                        variant="outline"
+                        variant={currentUser.role === 'Supervisor' ? 'default' : 'outline'}
                         size="sm"
+                        className={currentUser.role === 'Supervisor' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
                         onClick={() => openAssignDialog(member)}
                       >
                         <FolderPlus className="w-4 h-4 mr-1" />
-                        Assign
+                        Assign to Project
                       </Button>
                       {currentUser.role === 'Admin' && (
                         <Button
