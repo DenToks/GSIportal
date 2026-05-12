@@ -535,7 +535,7 @@ export function Staff({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLE_OPTIONS.map((r) => (
+                  {ROLE_OPTIONS.filter(r => roleDialogMode === 'manage' ? r !== 'Admin' : true).map((r) => (
                     <SelectItem key={r} value={r}>{r}</SelectItem>
                   ))}
                 </SelectContent>
