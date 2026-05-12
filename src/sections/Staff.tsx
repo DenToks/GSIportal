@@ -61,6 +61,7 @@ interface StaffProps {
     reason: string;
   }) => void;
   onDirectRoleChange: (userId: string, newRole: Role) => void;
+  onUpdateStaffSystemRole: (staffId: string, systemRole: string) => void;
   onAssignProject: (staffId: string, projectId: string) => void;
   onAddStaff: (member: StaffType) => void;
 }
@@ -127,6 +128,7 @@ export function Staff({
   projects,
   onSubmitRoleRequest,
   onDirectRoleChange,
+  onUpdateStaffSystemRole,
   onAssignProject,
   onAddStaff,
 }: StaffProps) {
@@ -137,6 +139,7 @@ export function Staff({
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [roleDialogMode, setRoleDialogMode] = useState<'manage' | 'request'>('request');
   const [roleTargetUserId, setRoleTargetUserId] = useState<string>('');
+  const [roleTargetStaffId, setRoleTargetStaffId] = useState<string>('');
   const [roleTargetName, setRoleTargetName] = useState<string>('');
   const [requestedRole, setRequestedRole] = useState<Role>('Staff');
   const [roleReason, setRoleReason] = useState('');
@@ -204,14 +207,14 @@ export function Staff({
 
   const openRoleDialog = (member: StaffType, mode: 'manage' | 'request' = 'request') => {
     const u = matchUser(member);
+    setRoleTargetStaffId(member.id);
+    setRoleTargetName(member.name);
     if (u) {
       setRoleTargetUserId(u.id);
-      setRoleTargetName(member.name);
       setRequestedRole(u.role);
     } else {
       setRoleTargetUserId('');
-      setRoleTargetName(member.name);
-      setRequestedRole('Staff');
+      setRequestedRole((member.systemRole as Role) ?? 'Staff');
     }
     setRoleDialogMode(mode);
     setRoleReason('');
@@ -237,8 +240,10 @@ export function Staff({
   };
 
   const submitDirectRoleChange = () => {
-    if (!roleTargetUserId) return;
-    onDirectRoleChange(roleTargetUserId, requestedRole);
+    if (roleTargetUserId) {
+      onDirectRoleChange(roleTargetUserId, requestedRole);
+    }
+    onUpdateStaffSystemRole(roleTargetStaffId, requestedRole);
     setRoleDialogOpen(false);
   };
 
@@ -401,10 +406,11 @@ export function Staff({
                   <TableCell>
                     {(() => {
                       const u = matchUser(member);
-                      if (!u) return <span className="text-xs text-slate-400">—</span>;
+                      const sysRole = u?.role ?? member.systemRole;
+                      if (!sysRole) return <span className="text-xs text-slate-400">—</span>;
                       return (
-                        <Badge variant="outline" className={getSystemRoleColor(u.role)}>
-                          {u.role}
+                        <Badge variant="outline" className={getSystemRoleColor(sysRole)}>
+                          {sysRole}
                         </Badge>
                       );
                     })()}

@@ -190,6 +190,10 @@ function App() {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
   };
 
+  const handleUpdateStaffSystemRole = (staffId: string, systemRole: string) => {
+    setStaffList(prev => prev.map(s => s.id === staffId ? { ...s, systemRole } : s));
+  };
+
   const handleResolveRoleRequest = (requestId: string, decision: 'Approved' | 'Denied') => {
     if (!currentUser) return;
     const req = roleRequests.find(r => r.id === requestId);
@@ -315,6 +319,7 @@ function App() {
               currentUser={currentUser}
               onSubmitRoleRequest={handleSubmitRoleRequest}
               onDirectRoleChange={handleDirectRoleChange}
+              onUpdateStaffSystemRole={handleUpdateStaffSystemRole}
               onAssignProject={(staffId, projectId) => {
                 const member = staffList.find(s => s.id === staffId);
                 setStaffList(prev =>
