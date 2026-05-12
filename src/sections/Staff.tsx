@@ -66,6 +66,7 @@ interface StaffProps {
 
 const EMPTY_STAFF_FORM = {
   name: '',
+  systemRole: 'Staff',
   role: '',
   department: '',
   email: '',
@@ -527,6 +528,19 @@ export function Staff({
                 placeholder="e.g. Engr. Juan dela Cruz"
                 required
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>System Role <span className="text-red-500">*</span></Label>
+              <Select value={staffForm.systemRole} onValueChange={v => setStaffField('systemRole', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Supervisor">Supervisor</SelectItem>
+                  <SelectItem value="Project Manager">Project Manager</SelectItem>
+                  <SelectItem value="Staff">Staff</SelectItem>
+                  <SelectItem value="Client">Client</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

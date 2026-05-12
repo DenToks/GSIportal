@@ -56,6 +56,7 @@ export interface Staff {
   id: string;
   name: string;
   role: string;
+  systemRole?: string;
   department: string;
   email: string;
   phone: string;
