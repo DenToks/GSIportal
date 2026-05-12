@@ -247,7 +247,7 @@ export function Staff({
         {currentUser.role === 'Admin' && (
           <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setStaffForm(EMPTY_STAFF_FORM); setAddStaffOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Staff
+            Create Account
           </Button>
         )}
       </div>
@@ -387,16 +387,28 @@ export function Staff({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant={currentUser.role === 'Supervisor' ? 'default' : 'outline'}
-                        size="sm"
-                        className={currentUser.role === 'Supervisor' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
-                        onClick={() => openAssignDialog(member)}
-                      >
-                        <FolderPlus className="w-4 h-4 mr-1" />
-                        Assign to Project
-                      </Button>
                       {currentUser.role === 'Admin' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openRoleDialog(member)}
+                        >
+                          <UserCog className="w-4 h-4 mr-1" />
+                          Manage Role
+                        </Button>
+                      )}
+                      {(currentUser.role === 'Supervisor' || currentUser.role === 'Project Manager') && (
+                        <Button
+                          variant={currentUser.role === 'Supervisor' ? 'default' : 'outline'}
+                          size="sm"
+                          className={currentUser.role === 'Supervisor' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                          onClick={() => openAssignDialog(member)}
+                        >
+                          <FolderPlus className="w-4 h-4 mr-1" />
+                          Assign to Project
+                        </Button>
+                      )}
+                      {currentUser.role === 'Project Manager' && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -515,8 +527,8 @@ export function Staff({
       <Dialog open={addStaffOpen} onOpenChange={setAddStaffOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Add Staff Member</DialogTitle>
-            <DialogDescription>Add a new member to the staff roster.</DialogDescription>
+            <DialogTitle>Create Account</DialogTitle>
+            <DialogDescription>Create a new staff account and add them to the roster.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddStaffSubmit} className="space-y-4 py-2">
             <div className="space-y-1.5">
