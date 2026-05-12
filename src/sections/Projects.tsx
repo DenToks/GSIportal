@@ -86,10 +86,8 @@ const getTypeColor = (type: string) => {
   }
 };
 
-export function Projects({ projects, onProjectClick, onAddProject, onEditProject, role, currentUser, staffList = [], users = [] }: ProjectsProps) {
-  const isSupervisor = role === 'Supervisor';
+export function Projects({ projects, onProjectClick, onAddProject, onEditProject, role, currentUser, staffList = [] }: ProjectsProps) {
   const isPM = role === 'Project Manager';
-  const pmUsers = users.filter(u => u.role === 'Project Manager');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -176,7 +174,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
           <h1 className="text-2xl font-bold text-slate-800">Projects</h1>
           <p className="text-slate-500">Manage and track all your projects in one place.</p>
         </div>
-        {isSupervisor && (
+        {isPM && (
           <Button className="bg-blue-600 hover:bg-blue-700" onClick={openNew}>
             <Plus className="w-4 h-4 mr-2" />
             New Project
@@ -299,7 +297,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                     <DropdownMenuItem onClick={() => onProjectClick(project.id)}>
                       View Details
                     </DropdownMenuItem>
-                    {isSupervisor && (
+                    {isPM && (
                       <DropdownMenuItem onClick={() => setTimeout(() => openEdit(project), 0)}>
                         Edit Project
                       </DropdownMenuItem>
@@ -444,40 +442,17 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                 />
               </div>
 
-              {isSupervisor ? (
-                <div className="space-y-1.5">
-                  <Label>Assign Project Manager <span className="text-red-500">*</span></Label>
-                  <Select
-                    value={form.assignedPMId}
-                    onValueChange={pmId => {
-                      const pm = pmUsers.find(u => u.id === pmId);
-                      setField('assignedPMId', pmId);
-                      if (pm) setField('manager', pm.name);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a Project Manager" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pmUsers.map(u => (
-                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor="proj-manager">Project Manager</Label>
-                  <Input
-                    id="proj-manager"
-                    value={form.manager}
-                    onChange={e => setField('manager', e.target.value)}
-                    placeholder="e.g. Engr. Patricia Lim"
-                    readOnly={currentUser?.role === 'Project Manager'}
-                    className={currentUser?.role === 'Project Manager' ? 'bg-slate-50 text-slate-600' : ''}
-                  />
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="proj-manager">Project Manager</Label>
+                <Input
+                  id="proj-manager"
+                  value={form.manager}
+                  onChange={e => setField('manager', e.target.value)}
+                  placeholder="e.g. Engr. Patricia Lim"
+                  readOnly={isPM}
+                  className={isPM ? 'bg-slate-50 text-slate-600' : ''}
+                />
+              </div>
 
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="proj-location">Location</Label>
