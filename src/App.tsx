@@ -186,6 +186,10 @@ function App() {
     });
   };
 
+  const handleDirectRoleChange = (userId: string, newRole: Role) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+  };
+
   const handleResolveRoleRequest = (requestId: string, decision: 'Approved' | 'Denied') => {
     if (!currentUser) return;
     const req = roleRequests.find(r => r.id === requestId);
@@ -310,6 +314,7 @@ function App() {
               users={users}
               currentUser={currentUser}
               onSubmitRoleRequest={handleSubmitRoleRequest}
+              onDirectRoleChange={handleDirectRoleChange}
               onAssignProject={(staffId, projectId) => {
                 const member = staffList.find(s => s.id === staffId);
                 setStaffList(prev =>

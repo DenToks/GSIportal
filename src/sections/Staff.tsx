@@ -60,6 +60,7 @@ interface StaffProps {
     requestedRole: Role;
     reason: string;
   }) => void;
+  onDirectRoleChange: (userId: string, newRole: Role) => void;
   onAssignProject: (staffId: string, projectId: string) => void;
   onAddStaff: (member: StaffType) => void;
 }
@@ -81,6 +82,17 @@ const ROLE_OPTIONS: Role[] = [
   'Staff',
   'Client',
 ];
+
+const getSystemRoleColor = (role: string) => {
+  switch (role) {
+    case 'Admin': return 'bg-red-100 text-red-700 border-red-200';
+    case 'Supervisor': return 'bg-purple-100 text-purple-700 border-purple-200';
+    case 'Project Manager': return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'Staff': return 'bg-green-100 text-green-700 border-green-200';
+    case 'Client': return 'bg-gray-100 text-gray-600 border-gray-200';
+    default: return 'bg-slate-100 text-slate-500 border-slate-200';
+  }
+};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -114,6 +126,7 @@ export function Staff({
   currentUser,
   projects,
   onSubmitRoleRequest,
+  onDirectRoleChange,
   onAssignProject,
   onAddStaff,
 }: StaffProps) {
@@ -122,6 +135,7 @@ export function Staff({
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [roleDialogMode, setRoleDialogMode] = useState<'manage' | 'request'>('request');
   const [roleTargetUserId, setRoleTargetUserId] = useState<string>('');
   const [requestedRole, setRequestedRole] = useState<Role>('Staff');
   const [roleReason, setRoleReason] = useState('');
@@ -187,15 +201,16 @@ export function Staff({
       (u) => u.email.toLowerCase() === member.email.toLowerCase() || u.name === member.name,
     );
 
-  const openRoleDialog = (member: StaffType) => {
+  const openRoleDialog = (member: StaffType, mode: 'manage' | 'request' = 'request') => {
     const u = matchUser(member);
     if (u) {
       setRoleTargetUserId(u.id);
-      setRequestedRole(u.role === 'Staff' ? 'Supervisor' : 'Staff');
+      setRequestedRole(u.role);
     } else {
       setRoleTargetUserId('');
       setRequestedRole('Staff');
     }
+    setRoleDialogMode(mode);
     setRoleReason('');
     setReasonError('');
     setRoleDialogOpen(true);
@@ -215,6 +230,12 @@ export function Staff({
       requestedRole,
       reason: roleReason.trim(),
     });
+    setRoleDialogOpen(false);
+  };
+
+  const submitDirectRoleChange = () => {
+    if (!roleTargetUserId) return;
+    onDirectRoleChange(roleTargetUserId, requestedRole);
     setRoleDialogOpen(false);
   };
 
@@ -350,6 +371,7 @@ export function Staff({
               <TableRow>
                 <TableHead className="w-[280px]">Name</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>System Role</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="text-center">Assigned Projects</TableHead>
                 <TableHead>Status</TableHead>
@@ -373,6 +395,17 @@ export function Staff({
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-slate-700">{member.role}</TableCell>
+                  <TableCell>
+                    {(() => {
+                      const u = matchUser(member);
+                      if (!u) return <span className="text-xs text-slate-400">—</span>;
+                      return (
+                        <Badge variant="outline" className={getSystemRoleColor(u.role)}>
+                          {u.role}
+                        </Badge>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell className="text-sm text-slate-600">{member.email}</TableCell>
                   <TableCell className="text-center font-medium text-slate-700">
                     {projectsForStaff(member)}
@@ -391,7 +424,7 @@ export function Staff({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => openRoleDialog(member)}
+                          onClick={() => openRoleDialog(member, 'manage')}
                         >
                           <UserCog className="w-4 h-4 mr-1" />
                           Manage Role
@@ -412,7 +445,7 @@ export function Staff({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => openRoleDialog(member)}
+                          onClick={() => openRoleDialog(member, 'request')}
                         >
                           <UserCog className="w-4 h-4 mr-1" />
                           Request Role Change
@@ -447,18 +480,17 @@ export function Staff({
         </CardContent>
       </Card>
 
-      {/* Role Change Request Modal */}
+      {/* Role Dialog — Manage (Admin) or Request (PM/Supervisor) */}
       <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Request Role Change</DialogTitle>
+            <DialogTitle>
+              {roleDialogMode === 'manage' ? 'Manage User Role' : 'Request Role Change'}
+            </DialogTitle>
             <DialogDescription>
-              Submit a role change request for an Admin to review.
-              {currentUser.role === 'Admin' && (
-                <span className="block mt-1 text-amber-600">
-                  Note: As an Admin, you cannot approve a request you submit yourself.
-                </span>
-              )}
+              {roleDialogMode === 'manage'
+                ? 'Directly update the system role for this user.'
+                : 'Submit a role change request for an Admin to review.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -482,42 +514,45 @@ export function Staff({
             </div>
 
             <div className="space-y-2">
-              <Label>Requested Role</Label>
+              <Label>{roleDialogMode === 'manage' ? 'New Role' : 'Requested Role'}</Label>
               <Select value={requestedRole} onValueChange={(v) => setRequestedRole(v as Role)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {ROLE_OPTIONS.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="reason">
-                Reason <span className="text-red-500">*</span>
-              </Label>
-              <Textarea
-                id="reason"
-                rows={4}
-                placeholder="Explain why this role change should be approved..."
-                value={roleReason}
-                onChange={(e) => setRoleReason(e.target.value)}
-              />
-              {reasonError && <p className="text-xs text-red-600">{reasonError}</p>}
-            </div>
+            {roleDialogMode === 'request' && (
+              <div className="space-y-2">
+                <Label htmlFor="reason">
+                  Reason <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="reason"
+                  rows={4}
+                  placeholder="Explain why this role change should be approved..."
+                  value={roleReason}
+                  onChange={(e) => setRoleReason(e.target.value)}
+                />
+                {reasonError && <p className="text-xs text-red-600">{reasonError}</p>}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setRoleDialogOpen(false)}>
               Cancel
             </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={submitRoleRequest}>
-              Submit Request
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={roleDialogMode === 'manage' ? submitDirectRoleChange : submitRoleRequest}
+            >
+              {roleDialogMode === 'manage' ? 'Save Changes' : 'Submit Request'}
             </Button>
           </DialogFooter>
         </DialogContent>
