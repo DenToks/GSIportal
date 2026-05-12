@@ -137,6 +137,7 @@ export function Staff({
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [roleDialogMode, setRoleDialogMode] = useState<'manage' | 'request'>('request');
   const [roleTargetUserId, setRoleTargetUserId] = useState<string>('');
+  const [roleTargetName, setRoleTargetName] = useState<string>('');
   const [requestedRole, setRequestedRole] = useState<Role>('Staff');
   const [roleReason, setRoleReason] = useState('');
   const [reasonError, setReasonError] = useState('');
@@ -205,9 +206,11 @@ export function Staff({
     const u = matchUser(member);
     if (u) {
       setRoleTargetUserId(u.id);
+      setRoleTargetName(member.name);
       setRequestedRole(u.role);
     } else {
       setRoleTargetUserId('');
+      setRoleTargetName(member.name);
       setRequestedRole('Staff');
     }
     setRoleDialogMode(mode);
@@ -495,23 +498,29 @@ export function Staff({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Target User</Label>
-              <Select value={roleTargetUserId} onValueChange={setRoleTargetUserId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a user account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users
-                    .filter((u) => u.role !== 'Client')
-                    .map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name} — {u.role}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {roleDialogMode === 'manage' ? (
+              <p className="text-sm text-slate-600">
+                Changing role for: <span className="font-semibold text-slate-800">{roleTargetName}</span>
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <Label>Target User</Label>
+                <Select value={roleTargetUserId} onValueChange={setRoleTargetUserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a user account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users
+                      .filter((u) => u.role !== 'Client')
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name} — {u.role}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>{roleDialogMode === 'manage' ? 'New Role' : 'Requested Role'}</Label>
