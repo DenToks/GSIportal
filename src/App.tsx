@@ -398,7 +398,7 @@ function App() {
           {!isClient && currentView === 'my-leave' && currentUser.role === 'Staff' && (
             <MyLeave leaveRequests={leaveRequests} currentUser={currentUser} onSubmit={handleAddLeaveRequest} />
           )}
-          {!isClient && currentView === 'assets' && currentUser.role === 'Supervisor' && (
+          {!isClient && currentView === 'assets' && currentUser.role === 'Supervisor' && currentUser.jobPosition === 'Support Supervisor' && (
             <Assets
               vehicles={vehicles}
               equipment={equipment}
