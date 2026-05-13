@@ -95,24 +95,24 @@ function buildMenu(role: Role, pendingApprovalsCount: number): MenuItem[] {
     ];
   }
 
-  const base: MenuItem[] = [
+  if (role === 'Admin') {
+    return [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'staff', label: 'Accounts', icon: Users },
+      { id: 'projects', label: 'Projects', icon: FolderKanban },
+      { id: 'tasks', label: 'Tasks', icon: ClipboardList },
+      { id: 'reports', label: 'Reports', icon: FileBarChart },
+      { id: 'approvals', label: 'Approvals', icon: ShieldCheck, badge: pendingApprovalsCount },
+    ];
+  }
+
+  return [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Projects', icon: FolderKanban },
     { id: 'tasks', label: 'Tasks', icon: ClipboardList },
-    { id: 'staff', label: role === 'Admin' ? 'Accounts' : 'Staff', icon: Users },
+    { id: 'staff', label: 'Staff', icon: Users },
     { id: 'reports', label: 'Reports', icon: FileBarChart },
   ];
-
-  if (role === 'Admin') {
-    base.push({
-      id: 'approvals',
-      label: 'Approvals',
-      icon: ShieldCheck,
-      badge: pendingApprovalsCount,
-    });
-  }
-
-  return base;
 }
 
 export function Sidebar({

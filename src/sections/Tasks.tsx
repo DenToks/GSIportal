@@ -95,6 +95,8 @@ const getStatusIcon = (status: string) => {
 
 export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, role, staffList = [] }: TasksProps) {
   const isStaff = role === 'Staff';
+  const isAdmin = role === 'Admin';
+  const isPM = role === 'Project Manager';
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -165,7 +167,7 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
           <h1 className="text-2xl font-bold text-slate-800">Tasks</h1>
           <p className="text-slate-500">Manage and track project tasks and assignments.</p>
         </div>
-        {!isStaff && (
+        {isPM && (
           <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditingTask(null); setForm(EMPTY_TASK_FORM); setDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" />
             New Task
@@ -279,14 +281,16 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
           <Card key={task.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
-                <div className="pt-1">
-                  <Checkbox 
-                    checked={task.status === 'Completed'}
-                    onCheckedChange={(checked) => {
-                      onUpdateStatus(task.id, checked ? 'Completed' : 'Pending');
-                    }}
-                  />
-                </div>
+                {!isAdmin && (
+                  <div className="pt-1">
+                    <Checkbox
+                      checked={task.status === 'Completed'}
+                      onCheckedChange={(checked) => {
+                        onUpdateStatus(task.id, checked ? 'Completed' : 'Pending');
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <div>
@@ -296,7 +300,7 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
                       <p className="text-sm text-slate-500 mt-1">{task.description}</p>
                       <p className="text-xs text-blue-600 mt-1">{getProjectName(task.projectId)}</p>
                     </div>
-                    {isStaff ? (
+                    {isAdmin ? null : isStaff ? (
                       <Select
                         value={task.status}
                         onValueChange={(v) => onUpdateStatus(task.id, v as Task['status'])}
