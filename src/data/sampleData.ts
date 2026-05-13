@@ -15,7 +15,6 @@ import type {
   Vehicle,
   Equipment,
   ActivityLog,
-  ClientInvoice,
 } from '@/types';
 
 export const dashboardStats: DashboardStats = {
@@ -808,40 +807,6 @@ export const activityLogs: ActivityLog[] = [
   { id: 'LOG-008', userName: 'Engr. Carlos Reyes', userRole: 'BD Supervisor', action: 'Created project', target: 'Tagaytay Highlands Geohazard Mapping', timestamp: '2024-03-01T09:00:00' },
   { id: 'LOG-009', userName: 'Geo. Ana Lim', userRole: 'PM Staff', action: 'Created task', target: 'Water quality sampling – Bataan Power Plant', timestamp: '2024-03-20T10:00:00' },
   { id: 'LOG-010', userName: 'Engr. Maria Cordero', userRole: 'Administrator', action: 'Approved role change', target: 'Engr. John Cruz → Supervisor', timestamp: '2026-05-01T15:00:00' },
-];
-
-// --- Client invoices --------------------------------------------------------
-export const clientInvoices: ClientInvoice[] = [
-  {
-    id: 'INV-001',
-    projectId: 'PRJ-2024-002',
-    invoiceNumber: 'GSI-INV-2024-0042',
-    description: 'Phase 1 – Site Reconnaissance and Initial Slope Mapping',
-    amount: 450000,
-    dueDate: '2024-05-15',
-    status: 'Paid',
-    issuedDate: '2024-04-15',
-  },
-  {
-    id: 'INV-002',
-    projectId: 'PRJ-2024-002',
-    invoiceNumber: 'GSI-INV-2024-0058',
-    description: 'Phase 2 – Borehole Drilling and Sampling Operations',
-    amount: 680000,
-    dueDate: '2024-06-10',
-    status: 'Unpaid',
-    issuedDate: '2024-05-10',
-  },
-  {
-    id: 'INV-003',
-    projectId: 'PRJ-2024-002',
-    invoiceNumber: 'GSI-INV-2024-0071',
-    description: 'Phase 3 – Laboratory Analysis and Risk Assessment',
-    amount: 320000,
-    dueDate: '2024-06-30',
-    status: 'Unpaid',
-    issuedDate: '2024-06-01',
-  },
 ];
 
 // Add a few client-audience notifications

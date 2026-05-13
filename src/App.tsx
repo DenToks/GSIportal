@@ -21,7 +21,6 @@ import { ClientOverview } from '@/sections/client/ClientOverview';
 import { ClientUpdates } from '@/sections/client/ClientUpdates';
 import { ClientDocumentsPage } from '@/sections/client/ClientDocuments';
 import { ClientTeam } from '@/sections/client/ClientTeam';
-import { ClientInvoicesPage } from '@/sections/client/ClientInvoices';
 import {
   projects as initialProjects,
   tasks as initialTasks,
@@ -34,7 +33,6 @@ import {
   vehicles as initialVehicles,
   equipment as initialEquipment,
   activityLogs as initialActivityLogs,
-  clientInvoices as initialClientInvoices,
 } from '@/data/sampleData';
 import type {
   Project,
@@ -49,7 +47,6 @@ import type {
   Vehicle,
   Equipment,
   ActivityLog,
-  ClientInvoice,
 } from '@/types';
 
 // Re-export View so other files can still import it from App if needed
@@ -71,7 +68,6 @@ function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [equipment, setEquipment] = useState<Equipment[]>(initialEquipment);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
-  const [clientInvoices] = useState<ClientInvoice[]>(initialClientInvoices);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const isClient = currentUser?.role === 'Client';
@@ -430,9 +426,6 @@ function App() {
           )}
           {isClient && clientProject && currentView === 'client-team' && (
             <ClientTeam project={clientProject} />
-          )}
-          {isClient && clientProject && currentView === 'client-invoices' && (
-            <ClientInvoicesPage project={clientProject} invoices={clientInvoices} />
           )}
           {isClient && !clientProject && (
             <div className="text-center py-12 text-slate-500">

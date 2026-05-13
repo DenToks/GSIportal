@@ -14,7 +14,6 @@ import {
   CalendarOff,
   Truck,
   ScrollText,
-  Receipt,
   Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,6 @@ export type View =
   | 'client-updates'
   | 'client-documents'
   | 'client-team'
-  | 'client-invoices'
   | 'leave-requests'
   | 'my-leave'
   | 'assets'
@@ -84,7 +82,6 @@ function buildMenu(
       { id: 'client-updates',    label: 'Project Updates',   icon: ClipboardList },
       { id: 'client-documents',  label: 'Documents',         icon: FileText },
       { id: 'client-team',       label: 'Project Team',      icon: UserSquare2 },
-      { id: 'client-invoices',   label: 'Invoices',          icon: Receipt },
     ];
   }
 

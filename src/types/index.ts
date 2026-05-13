@@ -195,14 +195,3 @@ export interface ActivityLog {
   target: string;
   timestamp: string;
 }
-
-export interface ClientInvoice {
-  id: string;
-  projectId: string;
-  invoiceNumber: string;
-  description: string;
-  amount: number;
-  dueDate: string;
-  status: 'Paid' | 'Unpaid' | 'Overdue';
-  issuedDate: string;
-}
