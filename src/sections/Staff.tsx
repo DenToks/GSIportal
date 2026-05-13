@@ -642,28 +642,33 @@ export function Staff({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${staffForm.systemRole === 'Client' ? 'grid-cols-1' : 'grid-cols-2'}`}>
               <div className="space-y-1.5">
-                <Label htmlFor="sf-role">Role / Position <span className="text-red-500">*</span></Label>
+                <Label htmlFor="sf-role">
+                  {staffForm.systemRole === 'Client' ? 'Organization / Name' : 'Role / Position'}
+                  <span className="text-red-500"> *</span>
+                </Label>
                 <Input
                   id="sf-role"
                   value={staffForm.role}
                   onChange={e => setStaffField('role', e.target.value)}
-                  placeholder="e.g. Geotechnical Engineer"
+                  placeholder={staffForm.systemRole === 'Client' ? 'e.g. DPWH Region 7' : 'e.g. Geotechnical Engineer'}
                   required
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="sf-dept">Department <span className="text-red-500">*</span></Label>
-                <Input
-                  id="sf-dept"
-                  value={staffForm.department}
-                  onChange={e => setStaffField('department', e.target.value)}
-                  placeholder="e.g. Engineering"
-                  required
-                />
-              </div>
+              {staffForm.systemRole !== 'Client' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="sf-dept">Department <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="sf-dept"
+                    value={staffForm.department}
+                    onChange={e => setStaffField('department', e.target.value)}
+                    placeholder="e.g. Engineering"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -678,7 +683,7 @@ export function Staff({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${staffForm.systemRole === 'Client' ? 'grid-cols-1' : 'grid-cols-2'}`}>
               <div className="space-y-1.5">
                 <Label htmlFor="sf-phone">Phone</Label>
                 <Input
@@ -689,6 +694,7 @@ export function Staff({
                 />
               </div>
 
+              {staffForm.systemRole !== 'Client' && (
               <div className="space-y-1.5">
                 <Label>Status</Label>
                 <Select value={staffForm.status} onValueChange={v => setStaffField('status', v as StaffType['status'])}>
@@ -700,6 +706,7 @@ export function Staff({
                   </SelectContent>
                 </Select>
               </div>
+              )}
             </div>
 
             <DialogFooter className="pt-2">
