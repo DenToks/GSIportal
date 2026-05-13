@@ -61,6 +61,7 @@ interface ProjectDetailProps {
   role?: Role;
   staffList?: StaffType[];
   currentUser?: User;
+  users?: User[];
 }
 
 const getStatusColor = (status: string) => {
@@ -116,8 +117,18 @@ const initialComments: ActivityEntry[] = [
   { id: 3, user: 'Engr. Maria Santos', comment: 'Laboratory testing for Batch A samples is complete. Results look good.', timestamp: '2024-03-27T16:45:00' },
 ];
 
-export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask, onEditTask, role, staffList = [], currentUser }: ProjectDetailProps) {
+export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask, onEditTask, role, staffList = [], currentUser, users = [] }: ProjectDetailProps) {
   const isStaff = role === 'Staff';
+  const isSupervisor = role === 'Supervisor';
+  const isPM = role === 'Project Manager';
+
+  // Supervisor only picks Staff-role users for manpower assignment
+  const pickableStaff = isSupervisor
+    ? staffList.filter(m => {
+        const u = users.find(u => u.email.toLowerCase() === m.email.toLowerCase() || u.name === m.name);
+        return !u || u.role === 'Staff';
+      })
+    : staffList;
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const [comments, setComments] = useState<ActivityEntry[]>(initialComments);
   const [newComment, setNewComment] = useState('');
@@ -161,6 +172,9 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
   const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
   };
+
+  const [assignTeamOpen, setAssignTeamOpen] = useState(false);
+  const [assignTeam, setAssignTeam] = useState<string[]>(project.team);
 
   const EMPTY_TASK = { title: '', description: '', assignedTo: [] as string[], status: 'Pending' as Task['status'], priority: 'Medium' as Task['priority'], dueDate: '' };
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -212,7 +226,13 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
             <MessageSquare className="w-4 h-4 mr-2" />
             Comment
           </Button>
-          {!isStaff && (
+          {isSupervisor && (
+            <Button variant="outline" onClick={() => { setAssignTeam(project.team); setAssignTeamOpen(true); }}>
+              <Users className="w-4 h-4 mr-2" />
+              Assign Team
+            </Button>
+          )}
+          {isPM && (
             <Button variant="outline" onClick={openEdit}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
@@ -226,8 +246,8 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem>Generate Report</DropdownMenuItem>
-              {!isStaff && <DropdownMenuItem>Archive Project</DropdownMenuItem>}
-              {!isStaff && <DropdownMenuItem className="text-red-600">Delete Project</DropdownMenuItem>}
+              {isPM && <DropdownMenuItem>Archive Project</DropdownMenuItem>}
+              {isPM && <DropdownMenuItem className="text-red-600">Delete Project</DropdownMenuItem>}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -370,6 +390,9 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
                       </div>
                     </div>
                   ))}
+                  {project.team.length === 0 && (
+                    <p className="text-sm text-slate-400">No team members assigned yet.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -379,7 +402,7 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
         <TabsContent value="tasks" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Project Tasks</h3>
-            {!isStaff && (
+            {isPM && (
               <Button size="sm" onClick={() => { setEditingTask(null); setTaskForm(EMPTY_TASK); setTaskDialogOpen(true); }}>
                 <ClipboardList className="w-4 h-4 mr-2" />
                 Add Task
@@ -421,7 +444,7 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>View Details</DropdownMenuItem>
-                        {!isStaff && (
+                        {isPM && (
                           <DropdownMenuItem onClick={() => setTimeout(() => openEditTask(task), 0)}>Edit Task</DropdownMenuItem>
                         )}
                         <DropdownMenuItem>Mark as Complete</DropdownMenuItem>
@@ -649,6 +672,36 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700">{editingTask ? 'Save Changes' : 'Create Task'}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Supervisor — Assign Manpower Dialog */}
+      <Dialog open={assignTeamOpen} onOpenChange={setAssignTeamOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Assign Manpower</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-slate-500">
+              Drag staff members into the drop zone to assign them to this project.
+            </p>
+            <StaffPicker
+              staffList={pickableStaff}
+              selected={assignTeam}
+              onChange={setAssignTeam}
+              multiple
+              dropLabel="Drag staff here to add to project"
+            />
+          </div>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setAssignTeamOpen(false)}>Cancel</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+              onEditProject({ ...project, team: assignTeam });
+              setAssignTeamOpen(false);
+            }}>
+              Save Assignment
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

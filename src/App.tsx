@@ -66,7 +66,7 @@ function App() {
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     if (user.role === 'Client') setCurrentView('client-overview');
-    else if (user.role === 'Supervisor') setCurrentView('projects');
+    else if (user.role === 'Supervisor') setCurrentView('staff');
     else setCurrentView('dashboard');
     setSelectedProjectId(null);
   };
@@ -374,6 +374,7 @@ function App() {
               role={currentUser.role}
               staffList={staffList}
               currentUser={currentUser}
+              users={users}
             />
           )}
           {!isClient && currentView === 'approvals' && currentUser.role === 'Admin' && (
