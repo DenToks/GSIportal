@@ -121,6 +121,7 @@ const initialComments: ActivityEntry[] = [
 export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask, onEditTask, role, jobPosition, staffList = [], currentUser, users = [] }: ProjectDetailProps) {
   const isStaff = role === 'Staff';
   const isSupervisor = role === 'Supervisor';
+  const isPMSupervisor = role === 'Project Manager' && jobPosition === 'PM Supervisor';
   // BD Supervisor creates projects but doesn't manage them after — PM Supervisor/Staff do
   const isPM = role === 'Project Manager' && jobPosition !== 'BD Supervisor';
 
@@ -129,6 +130,14 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
     ? staffList.filter(m => {
         const u = users.find(u => u.email.toLowerCase() === m.email.toLowerCase() || u.name === m.name);
         return !u || u.role === 'Staff';
+      })
+    : staffList;
+
+  // PM Supervisor only picks PM Staff for assignment
+  const pickablePMStaff = isPMSupervisor
+    ? staffList.filter(m => {
+        const u = users.find(u => u.email.toLowerCase() === m.email.toLowerCase() || u.name === m.name);
+        return u && u.role === 'Project Manager' && u.jobPosition === 'PM Staff';
       })
     : staffList;
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
@@ -177,6 +186,8 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
 
   const [assignTeamOpen, setAssignTeamOpen] = useState(false);
   const [assignTeam, setAssignTeam] = useState<string[]>(project.team);
+  const [assignPMStaffOpen, setAssignPMStaffOpen] = useState(false);
+  const [assignPMStaff, setAssignPMStaff] = useState<string[]>(project.team);
 
   const EMPTY_TASK = { title: '', description: '', assignedTo: [] as string[], status: 'Pending' as Task['status'], priority: 'Medium' as Task['priority'], dueDate: '' };
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -232,6 +243,12 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
             <Button variant="outline" onClick={() => { setAssignTeam(project.team); setAssignTeamOpen(true); }}>
               <Users className="w-4 h-4 mr-2" />
               Assign Team
+            </Button>
+          )}
+          {isPMSupervisor && (
+            <Button variant="outline" onClick={() => { setAssignPMStaff(project.team); setAssignPMStaffOpen(true); }}>
+              <Users className="w-4 h-4 mr-2" />
+              Assign PM Staff
             </Button>
           )}
           {isPM && (
@@ -700,6 +717,36 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
             <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
               onEditProject({ ...project, team: assignTeam });
               setAssignTeamOpen(false);
+            }}>
+              Save Assignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PM Supervisor — Assign PM Staff Dialog */}
+      <Dialog open={assignPMStaffOpen} onOpenChange={setAssignPMStaffOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Assign PM Staff to Project</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-slate-500">
+              Drag PM Staff members into the drop zone to assign them to this project.
+            </p>
+            <StaffPicker
+              staffList={pickablePMStaff}
+              selected={assignPMStaff}
+              onChange={setAssignPMStaff}
+              multiple
+              dropLabel="Drag PM Staff here to add to project"
+            />
+          </div>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setAssignPMStaffOpen(false)}>Cancel</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+              onEditProject({ ...project, team: assignPMStaff });
+              setAssignPMStaffOpen(false);
             }}>
               Save Assignment
             </Button>

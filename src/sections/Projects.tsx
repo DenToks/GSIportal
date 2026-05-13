@@ -449,17 +449,19 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="proj-manager">Project Manager</Label>
-                <Input
-                  id="proj-manager"
-                  value={form.manager}
-                  onChange={e => setField('manager', e.target.value)}
-                  placeholder="e.g. Engr. Patricia Lim"
-                  readOnly={isPM}
-                  className={isPM ? 'bg-slate-50 text-slate-600' : ''}
-                />
-              </div>
+              {!isBDSupervisor && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="proj-manager">Project Manager</Label>
+                  <Input
+                    id="proj-manager"
+                    value={form.manager}
+                    onChange={e => setField('manager', e.target.value)}
+                    placeholder="e.g. Engr. Patricia Lim"
+                    readOnly={isPM}
+                    className={isPM ? 'bg-slate-50 text-slate-600' : ''}
+                  />
+                </div>
+              )}
 
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="proj-location">Location</Label>
@@ -482,7 +484,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                 />
               </div>
 
-              {staffList.length > 0 && (
+              {staffList.length > 0 && !isBDSupervisor && (
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label>Team Members</Label>
                   <StaffPicker
