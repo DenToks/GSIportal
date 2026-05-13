@@ -92,8 +92,8 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
   const isPMSupervisor  = role === 'Project Manager' && jobPosition === 'PM Supervisor';
   const isPMStaff       = role === 'Project Manager' && jobPosition === 'PM Staff';
   const isPM = role === 'Project Manager';
-  // BD Supervisor can create; PM Supervisor can create + edit; PM Staff cannot create
-  const canCreate = isBDSupervisor || isPMSupervisor;
+  // BD Supervisor can create; PM Supervisor can only review and edit existing projects
+  const canCreate = isBDSupervisor;
   const canEdit   = isPMSupervisor;
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
