@@ -128,6 +128,10 @@ function App() {
     setStaffList(prev => [member, ...prev]);
   };
 
+  const handleAddUser = (user: User) => {
+    setUsers(prev => [user, ...prev]);
+  };
+
   const handleUpdateTaskStatus = (taskId: string, newStatus: Task['status']) => {
     setTasks(prev =>
       prev.map(task => (task.id === taskId ? { ...task, status: newStatus } : task)),
@@ -348,6 +352,7 @@ function App() {
               }}
               projects={projects}
               onAddStaff={handleAddStaff}
+              onAddUser={handleAddUser}
             />
           )}
           {!isClient && currentView === 'reports' && (

@@ -99,7 +99,7 @@ function buildMenu(role: Role, pendingApprovalsCount: number): MenuItem[] {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Projects', icon: FolderKanban },
     { id: 'tasks', label: 'Tasks', icon: ClipboardList },
-    { id: 'staff', label: 'Staff', icon: Users },
+    { id: 'staff', label: role === 'Admin' ? 'Accounts' : 'Staff', icon: Users },
     { id: 'reports', label: 'Reports', icon: FileBarChart },
   ];
 

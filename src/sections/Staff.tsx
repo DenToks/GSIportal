@@ -64,6 +64,7 @@ interface StaffProps {
   onUpdateStaffSystemRole: (staffId: string, systemRole: string) => void;
   onAssignProject: (staffId: string, projectId: string) => void;
   onAddStaff: (member: StaffType) => void;
+  onAddUser: (user: User) => void;
 }
 
 const EMPTY_STAFF_FORM = {
@@ -74,6 +75,7 @@ const EMPTY_STAFF_FORM = {
   email: '',
   phone: '',
   status: 'Available' as StaffType['status'],
+  assignedProjectId: '',
 };
 
 const ROLE_OPTIONS: Role[] = [
@@ -131,6 +133,7 @@ export function Staff({
   onUpdateStaffSystemRole,
   onAssignProject,
   onAddStaff,
+  onAddUser,
 }: StaffProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -164,12 +167,23 @@ export function Staff({
       .join('')
       .slice(0, 2)
       .toUpperCase();
+    const { assignedProjectId, ...staffData } = staffForm;
     onAddStaff({
       id: `STF-${Date.now()}`,
-      ...staffForm,
+      ...staffData,
       avatar: initials,
       currentProjects: 0,
       workload: 0,
+    });
+    onAddUser({
+      id: `USR-${Date.now()}`,
+      name: staffForm.name,
+      email: staffForm.email,
+      role: staffForm.systemRole as Role,
+      avatar: initials,
+      ...(staffForm.systemRole === 'Client' && assignedProjectId
+        ? { clientProjectIds: [assignedProjectId] }
+        : {}),
     });
     setStaffForm(EMPTY_STAFF_FORM);
     setAddStaffOpen(false);
@@ -270,8 +284,14 @@ export function Staff({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Staff &amp; Team</h1>
-          <p className="text-slate-500">Manage staff assignments and workload distribution.</p>
+          <h1 className="text-2xl font-bold text-slate-800">
+            {currentUser.role === 'Admin' ? 'Accounts' : 'Staff & Team'}
+          </h1>
+          <p className="text-slate-500">
+            {currentUser.role === 'Admin'
+              ? 'Create and manage system accounts.'
+              : 'Manage staff assignments and workload distribution.'}
+          </p>
         </div>
         {currentUser.role === 'Admin' && (
           <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setStaffForm(EMPTY_STAFF_FORM); setAddStaffOpen(true); }}>
@@ -604,6 +624,23 @@ export function Staff({
                 </SelectContent>
               </Select>
             </div>
+
+            {staffForm.systemRole === 'Client' && (
+              <div className="space-y-1.5">
+                <Label>Assigned Project <span className="text-red-500">*</span></Label>
+                <Select
+                  value={staffForm.assignedProjectId}
+                  onValueChange={v => setStaffField('assignedProjectId', v)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select a project" /></SelectTrigger>
+                  <SelectContent>
+                    {projects.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
