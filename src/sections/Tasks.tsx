@@ -49,6 +49,7 @@ interface TasksProps {
   onEditTask: (task: Task) => void;
   role?: Role;
   staffList?: StaffType[];
+  currentUser?: import('@/types').User;
 }
 
 const EMPTY_TASK_FORM = {
@@ -93,10 +94,11 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, role, staffList = [] }: TasksProps) {
+export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, role, staffList = [], currentUser }: TasksProps) {
   const isStaff = role === 'Staff';
   const isAdmin = role === 'Admin';
-  const isPM = role === 'Project Manager';
+  // Only PM Staff (not BD/PM Supervisor) manages tasks
+  const isPM = role === 'Project Manager' && currentUser?.jobPosition !== 'BD Supervisor';
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');

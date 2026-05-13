@@ -70,12 +70,18 @@ interface StaffProps {
 const EMPTY_STAFF_FORM = {
   name: '',
   systemRole: 'Staff',
+  jobPosition: '',
   role: '',
   department: '',
   email: '',
   phone: '',
   status: 'Available' as StaffType['status'],
   assignedProjectId: '',
+};
+
+const JOB_POSITIONS: Record<string, string[]> = {
+  'Project Manager': ['BD Supervisor', 'PM Supervisor', 'PM Staff'],
+  'Supervisor':      ['TI Supervisor', 'Support Supervisor'],
 };
 
 const ROLE_OPTIONS: Role[] = [
@@ -175,12 +181,18 @@ export function Staff({
       currentProjects: 0,
       workload: 0,
     });
+    const resolvedJobPosition =
+      staffForm.systemRole === 'Admin'
+        ? 'Administrator'
+        : staffForm.jobPosition || undefined;
+
     onAddUser({
       id: `USR-${Date.now()}`,
       name: staffForm.name,
       email: staffForm.email,
       role: staffForm.systemRole as Role,
       avatar: initials,
+      jobPosition: resolvedJobPosition,
       ...(staffForm.systemRole === 'Client' && assignedProjectId
         ? { clientProjectIds: [assignedProjectId] }
         : {}),
@@ -435,10 +447,11 @@ export function Staff({
                     {(() => {
                       const u = matchUser(member);
                       const sysRole = u?.role ?? member.systemRole;
-                      if (!sysRole) return <span className="text-xs text-slate-400">—</span>;
+                      const displayLabel = u?.jobPosition ?? sysRole;
+                      if (!displayLabel) return <span className="text-xs text-slate-400">—</span>;
                       return (
-                        <Badge variant="outline" className={getSystemRoleColor(sysRole)}>
-                          {sysRole}
+                        <Badge variant="outline" className={getSystemRoleColor(sysRole ?? '')}>
+                          {displayLabel}
                         </Badge>
                       );
                     })()}
@@ -622,7 +635,14 @@ export function Staff({
 
             <div className="space-y-1.5">
               <Label>System Role <span className="text-red-500">*</span></Label>
-              <Select value={staffForm.systemRole} onValueChange={v => setStaffField('systemRole', v)}>
+              <Select
+                value={staffForm.systemRole}
+                onValueChange={v => setStaffForm(prev => ({
+                  ...prev,
+                  systemRole: v,
+                  jobPosition: JOB_POSITIONS[v]?.[0] ?? '',
+                }))}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Supervisor">Supervisor</SelectItem>
@@ -632,6 +652,29 @@ export function Staff({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Job Position — dropdown for PM and Supervisor sub-roles */}
+            {JOB_POSITIONS[staffForm.systemRole] && (
+              <div className="space-y-1.5">
+                <Label>Job Position <span className="text-red-500">*</span></Label>
+                <Select
+                  value={staffForm.jobPosition}
+                  onValueChange={v => setStaffForm(prev => ({ ...prev, jobPosition: v, role: v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select position" /></SelectTrigger>
+                  <SelectContent>
+                    {JOB_POSITIONS[staffForm.systemRole].map(pos => (
+                      <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-400">
+                  {staffForm.systemRole === 'Project Manager'
+                    ? 'BD Supervisor creates projects • PM Supervisor assigns them • PM Staff manages tasks'
+                    : 'TI Supervisor assigns manpower • Support Supervisor handles vehicles & equipment'}
+                </p>
+              </div>
+            )}
 
             {staffForm.systemRole === 'Client' && (
               <div className="space-y-1.5">

@@ -11,28 +11,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Role, User } from "@/types";
+import type { User } from "@/types";
 import { users } from "@/data/sampleData";
 
 interface LoginProps {
   onLogin: (user: User) => void;
 }
 
-const ROLES: Role[] = [
-  "Admin",
-  "Project Manager",
-  "Supervisor",
-  "Staff",
-  "Client",
+// All selectable positions mapped to user IDs for demo
+const POSITION_MAP: { label: string; userId: string }[] = [
+  { label: 'Administrator',     userId: 'USR-ADMIN'    },
+  { label: 'BD Supervisor',     userId: 'USR-BD-1'     },
+  { label: 'PM Supervisor',     userId: 'USR-PMS-1'    },
+  { label: 'PM Staff',          userId: 'USR-PMSTAFF-1'},
+  { label: 'TI Supervisor',     userId: 'USR-TI-1'     },
+  { label: 'Support Supervisor',userId: 'USR-SS-1'     },
+  { label: 'Staff',             userId: 'USR-TECH-1'   },
+  { label: 'Client',            userId: 'USR-CLI-1'    },
 ];
-
 
 export function Login({ onLogin }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("Project Manager");
+  const [selectedUserId, setSelectedUserId] = useState<string>("USR-ADMIN");
   const [isLoading, setIsLoading] = useState(false);
+
+  const handlePositionChange = (userId: string) => {
+    setSelectedUserId(userId);
+    const user = users.find(u => u.id === userId);
+    if (user) setEmail(user.email);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,21 +49,14 @@ export function Login({ onLogin }: LoginProps) {
     await new Promise((resolve) => setTimeout(resolve, 600));
     setIsLoading(false);
 
+    // Try email match first, then fall back to selected position
     const byEmail = email
       ? users.find((u) => u.email.toLowerCase() === email.toLowerCase())
       : undefined;
-    const byRole = users.find((u) => u.role === role);
-    const matched = byEmail ?? byRole;
+    const byId = users.find(u => u.id === selectedUserId);
+    const matched = byEmail ?? byId ?? users[0];
 
-    const user: User = matched ?? {
-      id: "USR-GUEST",
-      name: role === "Client" ? "Guest Client" : "Guest User",
-      email: email || "guest@geoinnovative.ph",
-      role,
-      avatar: role === "Client" ? "GC" : "GU",
-    };
-
-    onLogin({ ...user, role });
+    onLogin(matched);
   };
 
   return (
@@ -62,17 +64,14 @@ export function Login({ onLogin }: LoginProps) {
 
       {/* ── Left Panel — dark navy + hero image ── */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-between overflow-hidden bg-[#0f172a]">
-        {/* Background image */}
         <img
           src="/hero.jpg"
           alt="Site background"
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
-        {/* Dark overlay */}
         <div className="absolute inset-0 bg-[#0f172a]/75" />
 
-        {/* Top — logo */}
         <div className="relative z-10 p-10">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="GSI Logo" width={40} height={40} className="object-contain" />
@@ -83,7 +82,6 @@ export function Login({ onLogin }: LoginProps) {
           </div>
         </div>
 
-        {/* Center — headline */}
         <div className="relative z-10 px-10">
           <h2 className="text-4xl font-bold text-white leading-tight mb-4">
             Precision Geotechnical &<br />Geoscience Solutions
@@ -93,7 +91,6 @@ export function Login({ onLogin }: LoginProps) {
           </p>
         </div>
 
-        {/* Bottom — copyright */}
         <div className="relative z-10 p-10">
           <p className="text-slate-600 text-xs">
             © 2024 Geoinnovative Inc. All rights reserved.
@@ -105,7 +102,6 @@ export function Login({ onLogin }: LoginProps) {
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-md">
 
-          {/* Mobile-only logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
             <img src="/logo.png" alt="GSI Logo" width={36} height={36} className="object-contain" />
             <div>
@@ -121,20 +117,20 @@ export function Login({ onLogin }: LoginProps) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* Role */}
+            {/* Position / Role */}
             <div className="space-y-1.5">
-              <Label htmlFor="role" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="position" className="text-sm font-medium text-slate-700">
                 Sign in as
               </Label>
               <div className="relative">
                 <UserCog className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
-                <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                  <SelectTrigger id="role" className="pl-9 border-slate-200 focus:border-blue-500 h-11">
-                    <SelectValue placeholder="Select role" />
+                <Select value={selectedUserId} onValueChange={handlePositionChange}>
+                  <SelectTrigger id="position" className="pl-9 border-slate-200 focus:border-blue-500 h-11">
+                    <SelectValue placeholder="Select your position" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    {POSITION_MAP.map((p) => (
+                      <SelectItem key={p.userId} value={p.userId}>{p.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -184,7 +180,6 @@ export function Login({ onLogin }: LoginProps) {
               </div>
             </div>
 
-            {/* Remember + Forgot */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Checkbox id="remember" />
@@ -197,7 +192,6 @@ export function Login({ onLogin }: LoginProps) {
               </button>
             </div>
 
-            {/* Submit */}
             <Button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-11 text-sm tracking-wide"

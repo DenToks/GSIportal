@@ -45,6 +45,7 @@ interface ProjectsProps {
   onAddProject: (project: Project) => void;
   onEditProject: (updated: Project) => void;
   role?: Role;
+  jobPosition?: string;
   currentUser?: User;
   staffList?: StaffType[];
   users?: User[];
@@ -86,8 +87,14 @@ const getTypeColor = (type: string) => {
   }
 };
 
-export function Projects({ projects, onProjectClick, onAddProject, onEditProject, role, currentUser, staffList = [] }: ProjectsProps) {
+export function Projects({ projects, onProjectClick, onAddProject, onEditProject, role, jobPosition, currentUser, staffList = [] }: ProjectsProps) {
+  const isBDSupervisor  = role === 'Project Manager' && jobPosition === 'BD Supervisor';
+  const isPMSupervisor  = role === 'Project Manager' && jobPosition === 'PM Supervisor';
+  const isPMStaff       = role === 'Project Manager' && jobPosition === 'PM Staff';
   const isPM = role === 'Project Manager';
+  // BD Supervisor can create; PM Supervisor can create + edit; PM Staff cannot create
+  const canCreate = isBDSupervisor || isPMSupervisor;
+  const canEdit   = isPMSupervisor;
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -97,8 +104,8 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
   const [form, setForm] = useState(EMPTY_FORM);
 
   const filteredProjects = projects.filter(project => {
-    // PM sees only projects where they are the assigned manager
-    if (isPM && currentUser) {
+    // PM Staff: only sees their assigned projects
+    if (isPMStaff && currentUser) {
       const isAssigned =
         project.manager === currentUser.name ||
         (project.assignedPMId !== undefined && project.assignedPMId === currentUser.id);
@@ -127,7 +134,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
     setEditingProject(null);
     setForm({
       ...EMPTY_FORM,
-      manager: currentUser?.role === 'Project Manager' ? (currentUser?.name ?? '') : '',
+      manager: isPMSupervisor ? (currentUser?.name ?? '') : '',
     });
     setDialogOpen(true);
   };
@@ -174,7 +181,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
           <h1 className="text-2xl font-bold text-slate-800">Projects</h1>
           <p className="text-slate-500">Manage and track all your projects in one place.</p>
         </div>
-        {isPM && (
+        {canCreate && (
           <Button className="bg-blue-600 hover:bg-blue-700" onClick={openNew}>
             <Plus className="w-4 h-4 mr-2" />
             New Project
@@ -297,7 +304,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                     <DropdownMenuItem onClick={() => onProjectClick(project.id)}>
                       View Details
                     </DropdownMenuItem>
-                    {isPM && (
+                    {canEdit && (
                       <DropdownMenuItem onClick={() => setTimeout(() => openEdit(project), 0)}>
                         Edit Project
                       </DropdownMenuItem>

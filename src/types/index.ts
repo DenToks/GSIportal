@@ -11,7 +11,7 @@ export interface User {
   email: string;
   role: Role;
   avatar: string;
-  // Client users are linked to one or more projects they can view
+  jobPosition?: string;
   clientProjectIds?: string[];
 }
 
@@ -148,4 +148,61 @@ export interface ClientMilestone {
   name: string;
   date: string;
   status: 'Done' | 'In Progress' | 'Pending';
+}
+
+export interface LeaveRequest {
+  id: string;
+  staffId: string;
+  staffName: string;
+  type: 'Sick Leave' | 'Vacation Leave' | 'Emergency Leave' | 'Other';
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: 'Pending' | 'Approved' | 'Denied';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+}
+
+export interface Vehicle {
+  id: string;
+  name: string;
+  type: 'Truck' | 'Van' | 'SUV' | 'Pickup' | 'Heavy Equipment' | 'Motorcycle';
+  plateNumber: string;
+  status: 'Available' | 'Deployed' | 'Maintenance';
+  assignedProjectId?: string;
+  assignedProjectName?: string;
+  driver?: string;
+  lastService?: string;
+}
+
+export interface Equipment {
+  id: string;
+  name: string;
+  type: string;
+  serialNumber: string;
+  status: 'Available' | 'Deployed' | 'Under Maintenance';
+  assignedProjectId?: string;
+  assignedProjectName?: string;
+  lastCalibration?: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  userName: string;
+  userRole: string;
+  action: string;
+  target: string;
+  timestamp: string;
+}
+
+export interface ClientInvoice {
+  id: string;
+  projectId: string;
+  invoiceNumber: string;
+  description: string;
+  amount: number;
+  dueDate: string;
+  status: 'Paid' | 'Unpaid' | 'Overdue';
+  issuedDate: string;
 }

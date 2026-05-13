@@ -10,12 +10,17 @@ import {
   FileText,
   UserSquare2,
   Lock,
+  CalendarDays,
+  CalendarOff,
+  Truck,
+  ScrollText,
+  Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Role } from '@/types';
 
-type View =
+export type View =
   | 'dashboard'
   | 'projects'
   | 'tasks'
@@ -26,7 +31,13 @@ type View =
   | 'client-overview'
   | 'client-updates'
   | 'client-documents'
-  | 'client-team';
+  | 'client-team'
+  | 'client-invoices'
+  | 'leave-requests'
+  | 'my-leave'
+  | 'assets'
+  | 'activity-logs'
+  | 'schedule';
 
 interface SidebarProps {
   currentView: View;
@@ -34,7 +45,9 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   role: Role;
+  jobPosition?: string;
   pendingApprovalsCount?: number;
+  pendingLeaveCount?: number;
 }
 
 interface MenuItem {
@@ -57,61 +70,88 @@ function GSILogo({ size = 'large' }: { size?: 'small' | 'large' }) {
   );
 }
 
-function buildMenu(role: Role, pendingApprovalsCount: number): MenuItem[] {
+function buildMenu(
+  role: Role,
+  jobPosition: string | undefined,
+  pendingApprovalsCount: number,
+  pendingLeaveCount: number,
+): MenuItem[] {
   if (role === 'Client') {
     return [
-      { id: 'client-overview', label: 'Project Overview', icon: LayoutDashboard },
-      { id: 'client-updates', label: 'Project Updates', icon: ClipboardList },
-      { id: 'client-documents', label: 'Documents', icon: FileText },
-      { id: 'client-team', label: 'Project Team', icon: UserSquare2 },
+      { id: 'client-overview',   label: 'Project Overview',  icon: LayoutDashboard },
+      { id: 'client-updates',    label: 'Project Updates',   icon: ClipboardList },
+      { id: 'client-documents',  label: 'Documents',         icon: FileText },
+      { id: 'client-team',       label: 'Project Team',      icon: UserSquare2 },
+      { id: 'client-invoices',   label: 'Invoices',          icon: Receipt },
     ];
   }
 
   if (role === 'Staff') {
     return [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'projects', label: 'My Projects', icon: FolderKanban },
-      { id: 'tasks', label: 'My Tasks', icon: ClipboardList },
-      { id: 'reports', label: 'Reports', icon: FileBarChart },
+      { id: 'dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
+      { id: 'projects',   label: 'My Projects',     icon: FolderKanban },
+      { id: 'tasks',      label: 'My Tasks',        icon: ClipboardList },
+      { id: 'schedule',   label: 'My Schedule',     icon: CalendarDays },
+      { id: 'my-leave',   label: 'Leave Requests',  icon: CalendarOff },
+      { id: 'reports',    label: 'Reports',         icon: FileBarChart },
     ];
   }
 
   if (role === 'Supervisor') {
+    if (jobPosition === 'Support Supervisor') {
+      return [
+        { id: 'dashboard',      label: 'Dashboard',        icon: LayoutDashboard },
+        { id: 'projects',       label: 'Projects',         icon: FolderKanban },
+        { id: 'assets',         label: 'Assets',           icon: Truck },
+        { id: 'staff',          label: 'Staff Assignment', icon: Users },
+        { id: 'leave-requests', label: 'Leave Requests',   icon: CalendarOff, badge: pendingLeaveCount },
+        { id: 'reports',        label: 'Reports',          icon: FileBarChart },
+      ];
+    }
+    // TI Supervisor (default)
     return [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'projects', label: 'Projects', icon: FolderKanban },
-      { id: 'staff', label: 'Staff Assignment', icon: Users },
-      { id: 'reports', label: 'Reports', icon: FileBarChart },
+      { id: 'dashboard',      label: 'Dashboard',        icon: LayoutDashboard },
+      { id: 'projects',       label: 'Projects',         icon: FolderKanban },
+      { id: 'staff',          label: 'Staff Assignment', icon: Users },
+      { id: 'leave-requests', label: 'Leave Requests',   icon: CalendarOff, badge: pendingLeaveCount },
+      { id: 'reports',        label: 'Reports',          icon: FileBarChart },
     ];
   }
 
   if (role === 'Project Manager') {
+    if (jobPosition === 'BD Supervisor') {
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'projects',  label: 'Projects',  icon: FolderKanban },
+        { id: 'reports',   label: 'Reports',   icon: FileBarChart },
+      ];
+    }
+    if (jobPosition === 'PM Supervisor') {
+      return [
+        { id: 'dashboard', label: 'Dashboard',  icon: LayoutDashboard },
+        { id: 'projects',  label: 'Projects',   icon: FolderKanban },
+        { id: 'staff',     label: 'PM Staff',   icon: Users },
+        { id: 'reports',   label: 'Reports',    icon: FileBarChart },
+      ];
+    }
+    // PM Staff (default PM)
     return [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'projects', label: 'Projects', icon: FolderKanban },
-      { id: 'tasks', label: 'Tasks', icon: ClipboardList },
-      { id: 'staff', label: 'Staff', icon: Users },
-      { id: 'reports', label: 'Reports', icon: FileBarChart },
+      { id: 'dashboard', label: 'Dashboard',   icon: LayoutDashboard },
+      { id: 'projects',  label: 'My Projects', icon: FolderKanban },
+      { id: 'tasks',     label: 'Tasks',       icon: ClipboardList },
+      { id: 'reports',   label: 'Reports',     icon: FileBarChart },
     ];
   }
 
-  if (role === 'Admin') {
-    return [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'staff', label: 'Accounts', icon: Users },
-      { id: 'projects', label: 'Projects', icon: FolderKanban },
-      { id: 'tasks', label: 'Tasks', icon: ClipboardList },
-      { id: 'reports', label: 'Reports', icon: FileBarChart },
-      { id: 'approvals', label: 'Approvals', icon: ShieldCheck, badge: pendingApprovalsCount },
-    ];
-  }
-
+  // Admin
   return [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'projects', label: 'Projects', icon: FolderKanban },
-    { id: 'tasks', label: 'Tasks', icon: ClipboardList },
-    { id: 'staff', label: 'Staff', icon: Users },
-    { id: 'reports', label: 'Reports', icon: FileBarChart },
+    { id: 'dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
+    { id: 'staff',         label: 'Accounts',      icon: Users },
+    { id: 'projects',      label: 'Projects',      icon: FolderKanban },
+    { id: 'tasks',         label: 'Tasks',         icon: ClipboardList },
+    { id: 'reports',       label: 'Reports',       icon: FileBarChart },
+    { id: 'approvals',     label: 'Approvals',     icon: ShieldCheck, badge: pendingApprovalsCount },
+    { id: 'activity-logs', label: 'Activity Logs', icon: ScrollText },
   ];
 }
 
@@ -121,10 +161,19 @@ export function Sidebar({
   collapsed,
   onToggle,
   role,
+  jobPosition,
   pendingApprovalsCount = 0,
+  pendingLeaveCount = 0,
 }: SidebarProps) {
-  const menuItems = buildMenu(role, pendingApprovalsCount);
+  const menuItems = buildMenu(role, jobPosition, pendingApprovalsCount, pendingLeaveCount);
   const isClient = role === 'Client';
+
+  // Subtitle shown under logo
+  const subtitle = isClient
+    ? 'Client Portal'
+    : jobPosition
+    ? jobPosition
+    : role;
 
   return (
     <aside
@@ -138,9 +187,7 @@ export function Sidebar({
             <GSILogo size="large" />
             <div>
               <h1 className="font-bold text-lg leading-tight text-white">GSI Portal</h1>
-              <p className="text-xs text-slate-400">
-                {isClient ? 'Client Portal' : 'Geoinnovative Inc.'}
-              </p>
+              <p className="text-xs text-slate-400">{subtitle}</p>
             </div>
           </div>
         )}

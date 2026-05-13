@@ -59,6 +59,7 @@ interface ProjectDetailProps {
   onAddTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
   role?: Role;
+  jobPosition?: string;
   staffList?: StaffType[];
   currentUser?: User;
   users?: User[];
@@ -117,10 +118,11 @@ const initialComments: ActivityEntry[] = [
   { id: 3, user: 'Engr. Maria Santos', comment: 'Laboratory testing for Batch A samples is complete. Results look good.', timestamp: '2024-03-27T16:45:00' },
 ];
 
-export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask, onEditTask, role, staffList = [], currentUser, users = [] }: ProjectDetailProps) {
+export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask, onEditTask, role, jobPosition, staffList = [], currentUser, users = [] }: ProjectDetailProps) {
   const isStaff = role === 'Staff';
   const isSupervisor = role === 'Supervisor';
-  const isPM = role === 'Project Manager';
+  // BD Supervisor creates projects but doesn't manage them after — PM Supervisor/Staff do
+  const isPM = role === 'Project Manager' && jobPosition !== 'BD Supervisor';
 
   // Supervisor only picks Staff-role users for manpower assignment
   const pickableStaff = isSupervisor
