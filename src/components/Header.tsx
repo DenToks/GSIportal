@@ -34,6 +34,7 @@ interface HeaderProps {
   user: User;
   onLogout: () => void;
   isClient?: boolean;
+  onOpenSettings?: () => void;
 }
 
 const getNotificationIcon = (type: Notification['type']) => {
@@ -72,6 +73,7 @@ export function Header({
   user,
   onLogout,
   isClient,
+  onOpenSettings,
 }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -97,11 +99,12 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-3">
-        {!isClient && (
+        {!isClient && user.role === 'Admin' && (
           <Button
             variant="ghost"
             size="icon"
             className="relative text-slate-600 hover:text-blue-600 hover:bg-blue-50"
+            onClick={onOpenSettings}
           >
             <Settings className="w-5 h-5" />
           </Button>

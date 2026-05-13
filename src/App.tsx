@@ -16,6 +16,7 @@ import { MyLeave } from '@/sections/MyLeave';
 import { Assets } from '@/sections/Assets';
 import { ActivityLogs } from '@/sections/ActivityLogs';
 import { Schedule } from '@/sections/Schedule';
+import { SystemSettings } from '@/sections/SystemSettings';
 import { ClientOverview } from '@/sections/client/ClientOverview';
 import { ClientUpdates } from '@/sections/client/ClientUpdates';
 import { ClientDocumentsPage } from '@/sections/client/ClientDocuments';
@@ -320,6 +321,7 @@ function App() {
           user={currentUser}
           onLogout={handleLogout}
           isClient={isClient}
+          onOpenSettings={() => setCurrentView('system-settings')}
         />
         <main className="flex-1 overflow-auto p-6">
 
@@ -390,6 +392,9 @@ function App() {
           )}
           {!isClient && currentView === 'activity-logs' && currentUser.role === 'Admin' && (
             <ActivityLogs logs={activityLogs} />
+          )}
+          {!isClient && currentView === 'system-settings' && currentUser.role === 'Admin' && (
+            <SystemSettings currentUser={currentUser} />
           )}
           {!isClient && currentView === 'leave-requests' && currentUser.role === 'Supervisor' && (
             <LeaveRequests leaveRequests={leaveRequests} currentUser={currentUser} onResolve={handleResolveLeaveRequest} />

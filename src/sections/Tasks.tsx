@@ -97,8 +97,13 @@ const getStatusIcon = (status: string) => {
 export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, role, staffList = [], currentUser }: TasksProps) {
   const isStaff = role === 'Staff';
   const isAdmin = role === 'Admin';
-  // Only PM Staff (not BD/PM Supervisor) manages tasks
-  const isPM = role === 'Project Manager' && currentUser?.jobPosition !== 'BD Supervisor';
+  const isPMStaff = role === 'Project Manager' && currentUser?.jobPosition === 'PM Staff';
+  const canManageTasks = isAdmin || isPMStaff;
+  const manageableProjects = isPMStaff && currentUser
+    ? projects.filter((project) =>
+        project.assignedPMId === currentUser.id || project.manager === currentUser.name,
+      )
+    : projects;
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -136,7 +141,11 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
     setDialogOpen(false);
   };
 
-  const filteredTasks = tasks.filter(task => {
+  const visibleTaskSource = isPMStaff
+    ? tasks.filter((task) => manageableProjects.some((project) => project.id === task.projectId))
+    : tasks;
+
+  const filteredTasks = visibleTaskSource.filter(task => {
     const project = projects.find(p => p.id === task.projectId);
     const matchesSearch = 
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -150,11 +159,11 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
   });
 
   const stats = {
-    total: tasks.length,
-    completed: tasks.filter(t => t.status === 'Completed').length,
-    inProgress: tasks.filter(t => t.status === 'In Progress').length,
-    overdue: tasks.filter(t => t.status === 'Overdue').length,
-    pending: tasks.filter(t => t.status === 'Pending').length,
+    total: visibleTaskSource.length,
+    completed: visibleTaskSource.filter(t => t.status === 'Completed').length,
+    inProgress: visibleTaskSource.filter(t => t.status === 'In Progress').length,
+    overdue: visibleTaskSource.filter(t => t.status === 'Overdue').length,
+    pending: visibleTaskSource.filter(t => t.status === 'Pending').length,
   };
 
   const getProjectName = (projectId: string) => {
@@ -169,7 +178,7 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
           <h1 className="text-2xl font-bold text-slate-800">Tasks</h1>
           <p className="text-slate-500">Manage and track project tasks and assignments.</p>
         </div>
-        {isPM && (
+        {canManageTasks && (
           <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditingTask(null); setForm(EMPTY_TASK_FORM); setDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" />
             New Task
@@ -404,7 +413,7 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
               <Select value={form.projectId} onValueChange={v => setField('projectId', v)}>
                 <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent>
-                  {projects.map(p => (
+                  {manageableProjects.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>

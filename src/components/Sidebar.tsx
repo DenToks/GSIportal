@@ -15,6 +15,7 @@ import {
   Truck,
   ScrollText,
   Receipt,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +38,8 @@ export type View =
   | 'my-leave'
   | 'assets'
   | 'activity-logs'
-  | 'schedule';
+  | 'schedule'
+  | 'system-settings';
 
 interface SidebarProps {
   currentView: View;
@@ -152,6 +154,7 @@ function buildMenu(
     { id: 'reports',       label: 'Reports',       icon: FileBarChart },
     { id: 'approvals',     label: 'Approvals',     icon: ShieldCheck, badge: pendingApprovalsCount },
     { id: 'activity-logs', label: 'Activity Logs', icon: ScrollText },
+    { id: 'system-settings', label: 'System Settings', icon: Settings },
   ];
 }
 

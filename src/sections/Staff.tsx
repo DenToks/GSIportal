@@ -204,12 +204,20 @@ export function Staff({
   const filteredStaff = useMemo(
     () =>
       staffList.filter((member) => {
-        // Supervisor and PM see only Staff-role users
-        if (currentUser.role === 'Supervisor' || currentUser.role === 'Project Manager') {
-          const matched = users.find(
-            u => u.email.toLowerCase() === member.email.toLowerCase() || u.name === member.name
-          );
-          if (matched && matched.role !== 'Staff') return false;
+        const matchedUser = users.find(
+          (u) => u.email.toLowerCase() === member.email.toLowerCase() || u.name === member.name,
+        );
+
+        if (currentUser.role === 'Project Manager' && currentUser.jobPosition === 'PM Supervisor') {
+          if (!matchedUser || matchedUser.role !== 'Project Manager' || matchedUser.jobPosition !== 'PM Staff') return false;
+        }
+
+        if (currentUser.role === 'Supervisor') {
+          if (!matchedUser || matchedUser.role !== 'Staff') return false;
+        }
+
+        if (currentUser.role !== 'Admin' && currentUser.role !== 'Project Manager' && currentUser.role !== 'Supervisor') {
+          return false;
         }
 
         const q = searchQuery.toLowerCase();
@@ -222,7 +230,7 @@ export function Staff({
         const matchesStatus = statusFilter === 'all' || member.status === statusFilter;
         return matchesSearch && matchesDepartment && matchesStatus;
       }),
-    [staffList, searchQuery, departmentFilter, statusFilter, currentUser.role, users],
+    [staffList, searchQuery, departmentFilter, statusFilter, currentUser.role, currentUser.jobPosition, users],
   );
 
   const stats = {
@@ -480,7 +488,7 @@ export function Staff({
                           Manage Role
                         </Button>
                       )}
-                      {(currentUser.role === 'Supervisor' || currentUser.role === 'Project Manager') && (
+                      {(currentUser.role === 'Supervisor' || (currentUser.role === 'Project Manager' && currentUser.jobPosition === 'PM Supervisor')) && (
                         <Button
                           variant={currentUser.role === 'Supervisor' ? 'default' : 'outline'}
                           size="sm"
