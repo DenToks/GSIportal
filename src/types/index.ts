@@ -195,3 +195,16 @@ export interface ActivityLog {
   target: string;
   timestamp: string;
 }
+
+export interface DeletionRequest {
+  id: string;
+  projectId: string;
+  projectName: string;
+  requesterId: string;
+  requesterName: string;
+  requesterRole: string;
+  reason: string;
+  status: 'Pending' | 'Approved' | 'Denied';
+  createdAt: string;
+  reviewedAt?: string;
+}

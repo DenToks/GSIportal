@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import type { View } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
+import { DemoVisualizer } from '@/components/DemoVisualizer';
 import { Dashboard } from '@/sections/Dashboard';
 import { Projects } from '@/sections/Projects';
 import { Tasks } from '@/sections/Tasks';
@@ -13,6 +14,7 @@ import { Approvals } from '@/sections/Approvals';
 import { LandingPage } from '@/sections/LandingPage';
 import { LeaveRequests } from '@/sections/LeaveRequests';
 import { MyLeave } from '@/sections/MyLeave';
+import { DeletionRequests } from '@/sections/DeletionRequests';
 import { Assets } from '@/sections/Assets';
 import { ActivityLogs } from '@/sections/ActivityLogs';
 import { Schedule } from '@/sections/Schedule';
@@ -30,6 +32,7 @@ import {
   dailyReports as initialDailyReports,
   users as initialUsers,
   leaveRequests as initialLeaveRequests,
+  deletionRequests as initialDeletionRequests,
   vehicles as initialVehicles,
   equipment as initialEquipment,
   activityLogs as initialActivityLogs,
@@ -47,28 +50,142 @@ import type {
   Vehicle,
   Equipment,
   ActivityLog,
+  DeletionRequest,
 } from '@/types';
 
 // Re-export View so other files can still import it from App if needed
 export type { View };
+
+const STORAGE_VERSION = 'v2';
+const storageKey = (name: string) => `gsi_${STORAGE_VERSION}_${name}`;
 
 function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
-  const [staffList, setStaffList] = useState<StaffType[]>(initialStaff);
-  const [users, setUsers] = useState<User[]>(initialUsers);
-  const [roleRequests, setRoleRequests] = useState<RoleRequest[]>(initialRoleRequests);
-  const [dailyReports, setDailyReports] = useState<DailyReport[]>(initialDailyReports);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests);
-  const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
-  const [equipment, setEquipment] = useState<Equipment[]>(initialEquipment);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
+  const [projects, setProjects] = useState<Project[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('projects'));
+      return stored ? JSON.parse(stored) : initialProjects;
+    } catch {
+      return initialProjects;
+    }
+  });
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('tasks'));
+      return stored ? JSON.parse(stored) : initialTasks;
+    } catch {
+      return initialTasks;
+    }
+  });
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('notifications'));
+      return stored ? JSON.parse(stored) : initialNotifications;
+    } catch {
+      return initialNotifications;
+    }
+  });
+  const [staffList, setStaffList] = useState<StaffType[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('staff'));
+      return stored ? JSON.parse(stored) : initialStaff;
+    } catch {
+      return initialStaff;
+    }
+  });
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('users'));
+      return stored ? JSON.parse(stored) : initialUsers;
+    } catch {
+      return initialUsers;
+    }
+  });
+  const [roleRequests, setRoleRequests] = useState<RoleRequest[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('roleRequests'));
+      return stored ? JSON.parse(stored) : initialRoleRequests;
+    } catch {
+      return initialRoleRequests;
+    }
+  });
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('dailyReports'));
+      return stored ? JSON.parse(stored) : initialDailyReports;
+    } catch {
+      return initialDailyReports;
+    }
+  });
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('leaveRequests'));
+      return stored ? JSON.parse(stored) : initialLeaveRequests;
+    } catch {
+      return initialLeaveRequests;
+    }
+  });
+  const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>(initialDeletionRequests);
+
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('vehicles'));
+      return stored ? JSON.parse(stored) : initialVehicles;
+    } catch {
+      return initialVehicles;
+    }
+  });
+  const [equipment, setEquipment] = useState<Equipment[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('equipment'));
+      return stored ? JSON.parse(stored) : initialEquipment;
+    } catch {
+      return initialEquipment;
+    }
+  });
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey('activityLogs'));
+      return stored ? JSON.parse(stored) : initialActivityLogs;
+    } catch {
+      return initialActivityLogs;
+    }
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [demoRunning, setDemoRunning] = useState(false);
+
+  // Clear only on demo reset, not on app load, so data persists across sessions
+  const clearStorageForDemo = () => {
+    [
+      'projects',
+      'tasks',
+      'notifications',
+      'staff',
+      'users',
+      'roleRequests',
+      'dailyReports',
+      'leaveRequests',
+      'vehicles',
+      'equipment',
+      'activityLogs',
+    ].forEach(key => localStorage.removeItem(storageKey(key)));
+  };
+
+  // Persist core pieces to localStorage on change
+  React.useEffect(() => { localStorage.setItem(storageKey('projects'), JSON.stringify(projects)); }, [projects]);
+  React.useEffect(() => { localStorage.setItem(storageKey('tasks'), JSON.stringify(tasks)); }, [tasks]);
+  React.useEffect(() => { localStorage.setItem(storageKey('notifications'), JSON.stringify(notifications)); }, [notifications]);
+  React.useEffect(() => { localStorage.setItem(storageKey('staff'), JSON.stringify(staffList)); }, [staffList]);
+  React.useEffect(() => { localStorage.setItem(storageKey('users'), JSON.stringify(users)); }, [users]);
+  React.useEffect(() => { localStorage.setItem(storageKey('roleRequests'), JSON.stringify(roleRequests)); }, [roleRequests]);
+  React.useEffect(() => { localStorage.setItem(storageKey('dailyReports'), JSON.stringify(dailyReports)); }, [dailyReports]);
+  React.useEffect(() => { localStorage.setItem(storageKey('leaveRequests'), JSON.stringify(leaveRequests)); }, [leaveRequests]);
+  React.useEffect(() => { localStorage.setItem(storageKey('vehicles'), JSON.stringify(vehicles)); }, [vehicles]);
+  React.useEffect(() => { localStorage.setItem(storageKey('equipment'), JSON.stringify(equipment)); }, [equipment]);
+  React.useEffect(() => { localStorage.setItem(storageKey('activityLogs'), JSON.stringify(activityLogs)); }, [activityLogs]);
 
   const isClient = currentUser?.role === 'Client';
   const jobPosition = currentUser?.jobPosition;
@@ -85,6 +202,82 @@ function App() {
     }, ...prev]);
   };
 
+  // Export entire demo state as JSON
+  const exportState = () => {
+    const state = { projects, tasks, notifications, staffList, users, roleRequests, dailyReports, leaveRequests, vehicles, equipment, activityLogs };
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gsi-portal-state.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import state object (overwrites in-memory state)
+  const importState = (obj: any) => {
+    if (!obj) return;
+    if (obj.projects) setProjects(obj.projects);
+    if (obj.tasks) setTasks(obj.tasks);
+    if (obj.notifications) setNotifications(obj.notifications);
+    if (obj.staffList) setStaffList(obj.staffList);
+    if (obj.users) setUsers(obj.users);
+    if (obj.roleRequests) setRoleRequests(obj.roleRequests);
+    if (obj.dailyReports) setDailyReports(obj.dailyReports);
+    if (obj.leaveRequests) setLeaveRequests(obj.leaveRequests);
+    if (obj.vehicles) setVehicles(obj.vehicles);
+    if (obj.equipment) setEquipment(obj.equipment);
+    if (obj.activityLogs) setActivityLogs(obj.activityLogs);
+  };
+
+  // Demo playback: BD creates project → PM Supervisor assigns PM Staff → PM Staff creates task → TI assigns manpower
+  const runDemoPlayback = () => {
+    setDemoRunning(true);
+    // Ensure roles exist (create if missing)
+    const ensure = (role: string, jobPosition?: string, nameHint?: string) => {
+      const found = users.find(u => u.role === role && (jobPosition ? u.jobPosition === jobPosition : true));
+      if (found) return found;
+      const id = `USR-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+      const name = nameHint ?? `${role} Demo`;
+      const u = { id, name, email: `${id.toLowerCase()}@example.com`, role: role as any, avatar: name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase(), jobPosition } as User;
+      setUsers(prev => [u, ...prev]);
+      return u;
+    };
+
+    ensure('Project Manager', 'BD Supervisor', 'BD Demo');
+    ensure('Project Manager', 'PM Supervisor', 'PMS Demo');
+    const pmstaff = ensure('Project Manager', 'PM Staff', 'PMStaff Demo');
+    ensure('Supervisor', 'TI Supervisor', 'TI Demo');
+    const staff = ensure('Staff', undefined, 'Field Staff');
+
+    // BD creates project
+    const proj: Project = { id: `PRJ-DEMO-${Date.now()}`, name: 'Demo Project – BD to PM flow', client: 'Demo Client', type: 'Geotechnical', status: 'Pending', progress: 0, startDate: new Date().toISOString().slice(0,10), endDate: new Date(Date.now()+1000*60*60*24*30).toISOString().slice(0,10), manager: '', assignedPMId: undefined, team: [], description: 'Automated demo project', location: 'Demo Site' };
+    setProjects(prev => [proj, ...prev]);
+    pushLog('Created demo project', proj.name);
+
+    // PM Supervisor assigns PM Staff (add to project.team and set manager)
+    setTimeout(() => {
+      const updated = { ...proj, team: [pmstaff.name], manager: pmstaff.name, assignedPMId: pmstaff.id };
+      setProjects(prev => prev.map(p => p.id === proj.id ? updated : p));
+      pushLog('Assigned PM Staff to project', `${pmstaff.name} → ${proj.name}`);
+
+      // PM Staff creates a task
+      const tsk: Task = { id: `TSK-DEMO-${Date.now()}`, projectId: proj.id, title: 'Demo Task – Site Recon', description: 'Perform site reconnaissance', assignedTo: [], status: 'Pending', priority: 'Medium', dueDate: new Date(Date.now()+1000*60*60*24*7).toISOString().slice(0,10) };
+      setTasks(prev => [tsk, ...prev]);
+      pushLog('Created demo task', tsk.title);
+
+      // TI Supervisor assigns manpower (add staff to task.assignedTo)
+      setTimeout(() => {
+        setTasks(prev => prev.map(t => t.id === tsk.id ? { ...t, assignedTo: [staff.name] } : t));
+        setProjects(prev => prev.map(p => p.id === proj.id ? { ...p, team: Array.from(new Set([...(p.team||[]), staff.name])) } : p));
+        pushLog('TI assigned manpower', `${staff.name} → ${tsk.title}`);
+        // finish demo after short pause so UI updates
+        setTimeout(() => setDemoRunning(false), 300);
+      }, 600);
+    }, 600);
+
+  };
+
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     if (user.role === 'Client') setCurrentView('client-overview');
@@ -93,6 +286,17 @@ function App() {
     else setCurrentView('dashboard');
     setSelectedProjectId(null);
   };
+
+  // Expose functions to window for the admin UI file controls (simple demo wiring)
+  React.useEffect(() => {
+    (window as any).exportState = exportState;
+    (window as any).importState = importState;
+    (window as any).runDemoPlayback = runDemoPlayback;
+    (window as any).clearStorageForDemo = clearStorageForDemo;
+    return () => {
+      try { delete (window as any).exportState; delete (window as any).importState; delete (window as any).runDemoPlayback; delete (window as any).clearStorageForDemo; } catch {}
+    };
+  }, [exportState, importState, runDemoPlayback, clearStorageForDemo]);
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -116,7 +320,32 @@ function App() {
     pushLog('Created project', project.name);
   };
 
+  const handleDeleteProject = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setTasks(prev => prev.filter(t => t.projectId !== projectId));
+    if (project) pushLog('Deleted project', project.name);
+  };
+
   const handleEditProject = (updated: Project) => {
+    // Sync staff statuses when team membership changes (TI Supervisor assign/remove)
+    const old = projects.find(p => p.id === updated.id);
+    if (old) {
+      const added   = updated.team.filter(name => !old.team.includes(name));
+      const removed = old.team.filter(name => !updated.team.includes(name));
+      if (added.length > 0 || removed.length > 0) {
+        setStaffList(prev => prev.map(s => {
+          if (added.includes(s.name)) {
+            return { ...s, currentProjects: (s.currentProjects ?? 0) + 1, status: s.status === 'On Leave' ? s.status : 'Assigned' as const };
+          }
+          if (removed.includes(s.name)) {
+            const remaining = projects.filter(p => p.id !== updated.id && p.team.includes(s.name)).length;
+            return { ...s, currentProjects: Math.max(0, remaining), status: s.status === 'On Leave' ? s.status : remaining > 0 ? 'Assigned' as const : 'Available' as const };
+          }
+          return s;
+        }));
+      }
+    }
     setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
   };
 
@@ -199,6 +428,10 @@ function App() {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
   };
 
+  const handleUpdateUserJobPosition = (userId: string, jobPosition: string) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, jobPosition } : u));
+  };
+
   const handleUpdateStaffSystemRole = (staffId: string, systemRole: string) => {
     setStaffList(prev => prev.map(s => s.id === staffId ? { ...s, systemRole } : s));
   };
@@ -239,11 +472,60 @@ function App() {
 
   const handleResolveLeaveRequest = (id: string, decision: 'Approved' | 'Denied') => {
     if (!currentUser) return;
+    const req = leaveRequests.find(r => r.id === id);
     setLeaveRequests(prev => prev.map(r =>
       r.id === id ? { ...r, status: decision, reviewedBy: currentUser.name, reviewedAt: new Date().toISOString() } : r,
     ));
-    const req = leaveRequests.find(r => r.id === id);
-    if (req) pushLog(`${decision} leave request`, `${req.staffName} – ${req.type}`);
+    if (req) {
+      // Approved → staff member status becomes On Leave
+      if (decision === 'Approved') {
+        setStaffList(prev => prev.map(s =>
+          s.name === req.staffName ? { ...s, status: 'On Leave' as const } : s,
+        ));
+      }
+      pushLog(`${decision} leave request`, `${req.staffName} – ${req.type}`);
+    }
+  };
+
+  const handleMarkLeaveReturned = (staffName: string) => {
+    // When staff returns from leave, restore to Available (or Assigned if they have active projects)
+    setStaffList(prev => prev.map(s => {
+      if (s.name !== staffName) return s;
+      const hasProjects = (s.assignedProjectIds?.length ?? 0) > 0 || s.currentProjects > 0;
+      return { ...s, status: hasProjects ? 'Assigned' as const : 'Available' as const };
+    }));
+    pushLog('Staff returned from leave', staffName);
+  };
+
+  // --- Deletion request handlers --------------------------------------------
+  const handleRequestDeletion = (projectId: string, projectName: string, reason: string) => {
+    if (!currentUser) return;
+    const newReq: DeletionRequest = {
+      id: `DEL-${Date.now()}`,
+      projectId,
+      projectName,
+      requesterId: currentUser.id,
+      requesterName: currentUser.name,
+      requesterRole: currentUser.jobPosition ?? currentUser.role,
+      reason,
+      status: 'Pending',
+      createdAt: new Date().toISOString(),
+    };
+    setDeletionRequests(prev => [newReq, ...prev]);
+    pushLog('Requested project deletion', projectName);
+    pushNotification({ type: 'approval', title: 'Deletion Request', message: `${currentUser.name} requested deletion of "${projectName}".`, audience: 'internal' });
+  };
+
+  const handleResolveDeletionRequest = (requestId: string, decision: 'Approved' | 'Denied') => {
+    const req = deletionRequests.find(r => r.id === requestId);
+    if (!req) return;
+    setDeletionRequests(prev => prev.map(r =>
+      r.id === requestId ? { ...r, status: decision, reviewedAt: new Date().toISOString() } : r,
+    ));
+    if (decision === 'Approved') {
+      handleDeleteProject(req.projectId);
+    }
+    pushLog(`${decision} deletion request`, req.projectName);
   };
 
   // --- Asset handlers -------------------------------------------------------
@@ -285,7 +567,24 @@ function App() {
   }, [notifications, currentUser, isClient]);
 
   const unreadCount = visibleNotifications.filter(n => !n.read).length;
-  const pendingLeaveCount = leaveRequests.filter(r => r.status === 'Pending').length;
+  const pendingLeaveCount    = leaveRequests.filter(r => r.status === 'Pending').length;
+  const pendingDeletionCount = deletionRequests.filter(r => r.status === 'Pending').length;
+
+  // Derive staff currentProjects and status from live project data so Accounts page is always accurate
+  const computedStaffList = useMemo(() => {
+    const activeProjects = projects.filter(p => p.stage !== 'Archived');
+    return staffList.map(member => {
+      const count = activeProjects.filter(p => p.team.includes(member.name)).length;
+      const derivedStatus: StaffType['status'] =
+        member.status === 'On Leave' ? 'On Leave' :
+        count > 0 ? 'Assigned' : 'Available';
+      return { ...member, currentProjects: count, status: derivedStatus };
+    });
+  }, [staffList, projects]);
+
+  // Filter out orphaned tasks (project was deleted before cascade delete was in place)
+  const projectIds = useMemo(() => new Set(projects.map(p => p.id)), [projects]);
+  const activeTasks = useMemo(() => tasks.filter(t => projectIds.has(t.projectId)), [tasks, projectIds]);
 
   if (!currentUser) {
     if (showLanding) return <LandingPage onEnterPortal={() => setShowLanding(false)} />;
@@ -307,6 +606,7 @@ function App() {
         jobPosition={jobPosition}
         pendingApprovalsCount={roleRequests.filter(r => r.status === 'Pending').length}
         pendingLeaveCount={pendingLeaveCount}
+        pendingDeletionCount={pendingDeletionCount}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
@@ -323,7 +623,7 @@ function App() {
 
           {/* ── Internal portal ── */}
           {!isClient && currentView === 'dashboard' && (
-            <Dashboard projects={projects} tasks={tasks} onProjectClick={handleProjectClick} onNavigate={handleNavigate} />
+            <Dashboard projects={projects} tasks={activeTasks} onProjectClick={handleProjectClick} onNavigate={handleNavigate} currentUser={currentUser} staffList={computedStaffList} />
           )}
           {!isClient && currentView === 'projects' && (
             <Projects
@@ -334,20 +634,20 @@ function App() {
               role={currentUser.role}
               jobPosition={jobPosition}
               currentUser={currentUser}
-              staffList={staffList}
               users={users}
             />
           )}
           {!isClient && currentView === 'tasks' && (
-            <Tasks tasks={tasks} projects={projects} onUpdateStatus={handleUpdateTaskStatus} onAddTask={handleAddTask} onEditTask={handleEditTask} role={currentUser.role} staffList={staffList} currentUser={currentUser} />
+            <Tasks tasks={activeTasks} projects={projects} onUpdateStatus={handleUpdateTaskStatus} onAddTask={handleAddTask} onEditTask={handleEditTask} role={currentUser.role} staffList={computedStaffList} currentUser={currentUser} />
           )}
           {!isClient && currentView === 'staff' && (
             <Staff
-              staffList={staffList}
+              staffList={computedStaffList}
               users={users}
               currentUser={currentUser}
               onSubmitRoleRequest={handleSubmitRoleRequest}
               onDirectRoleChange={handleDirectRoleChange}
+              onUpdateUserJobPosition={handleUpdateUserJobPosition}
               onUpdateStaffSystemRole={handleUpdateStaffSystemRole}
               onAssignProject={(staffId, projectId) => {
                 const member = staffList.find(s => s.id === staffId);
@@ -366,19 +666,21 @@ function App() {
             />
           )}
           {!isClient && currentView === 'reports' && (
-            <Reports projects={projects} tasks={tasks} dailyReports={dailyReports} onSubmitDailyReport={handleSubmitDailyReport} />
+            <Reports projects={projects} tasks={activeTasks} dailyReports={dailyReports} onSubmitDailyReport={handleSubmitDailyReport} />
           )}
           {!isClient && currentView === 'project-detail' && selectedProjectId && (
             <ProjectDetail
               project={projects.find(p => p.id === selectedProjectId)!}
-              tasks={tasks.filter(t => t.projectId === selectedProjectId)}
+              tasks={activeTasks.filter(t => t.projectId === selectedProjectId)}
               onBack={() => handleNavigate('projects')}
               onEditProject={handleEditProject}
+              onDeleteProject={handleDeleteProject}
+              onRequestDeletion={handleRequestDeletion}
               onAddTask={handleAddTask}
               onEditTask={handleEditTask}
               role={currentUser.role}
               jobPosition={jobPosition}
-              staffList={staffList}
+              staffList={computedStaffList}
               currentUser={currentUser}
               users={users}
             />
@@ -390,10 +692,13 @@ function App() {
             <ActivityLogs logs={activityLogs} />
           )}
           {!isClient && currentView === 'system-settings' && currentUser.role === 'Admin' && (
-            <SystemSettings currentUser={currentUser} />
+            <SystemSettings currentUser={currentUser} onExportState={exportState} onImportState={importState} onRunDemo={runDemoPlayback} demoRunning={demoRunning} />
           )}
           {!isClient && currentView === 'leave-requests' && currentUser.role === 'Supervisor' && (
-            <LeaveRequests leaveRequests={leaveRequests} currentUser={currentUser} onResolve={handleResolveLeaveRequest} />
+            <LeaveRequests leaveRequests={leaveRequests} currentUser={currentUser} onResolve={handleResolveLeaveRequest} onMarkReturned={handleMarkLeaveReturned} />
+          )}
+          {!isClient && currentView === 'deletion-requests' && currentUser.jobPosition === 'BD Supervisor' && (
+            <DeletionRequests requests={deletionRequests} currentUser={currentUser} onApprove={id => handleResolveDeletionRequest(id, 'Approved')} onDeny={id => handleResolveDeletionRequest(id, 'Denied')} />
           )}
           {!isClient && currentView === 'my-leave' && currentUser.role === 'Staff' && (
             <MyLeave leaveRequests={leaveRequests} currentUser={currentUser} onSubmit={handleAddLeaveRequest} />
@@ -411,7 +716,7 @@ function App() {
             />
           )}
           {!isClient && currentView === 'schedule' && currentUser.role === 'Staff' && (
-            <Schedule tasks={tasks} projects={projects} currentUser={currentUser} />
+            <Schedule tasks={activeTasks} projects={projects} currentUser={currentUser} />
           )}
 
           {/* ── Client portal ── */}
@@ -433,6 +738,9 @@ function App() {
             </div>
           )}
         </main>
+        {demoRunning && (
+          <DemoVisualizer logs={activityLogs} onClose={() => setDemoRunning(false)} />
+        )}
       </div>
     </div>
   );

@@ -36,8 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { StaffPicker } from '@/components/StaffPicker';
-import type { Project, Role, Staff as StaffType, User } from '@/types';
+import type { Project, Role, User } from '@/types';
 
 interface ProjectsProps {
   projects: Project[];
@@ -47,7 +46,6 @@ interface ProjectsProps {
   role?: Role;
   jobPosition?: string;
   currentUser?: User;
-  staffList?: StaffType[];
   users?: User[];
 }
 
@@ -87,29 +85,44 @@ const getTypeColor = (type: string) => {
   }
 };
 
-export function Projects({ projects, onProjectClick, onAddProject, onEditProject, role, jobPosition, currentUser, staffList = [] }: ProjectsProps) {
+export function Projects({ projects, onProjectClick, onAddProject, onEditProject, role, jobPosition, currentUser, users = [] }: ProjectsProps) {
   const isBDSupervisor  = role === 'Project Manager' && jobPosition === 'BD Supervisor';
   const isPMSupervisor  = role === 'Project Manager' && jobPosition === 'PM Supervisor';
   const isPMStaff       = role === 'Project Manager' && jobPosition === 'PM Staff';
-  const isPM = role === 'Project Manager';
-  // BD Supervisor can create; PM Supervisor can only review and edit existing projects
   const canCreate = isBDSupervisor;
   const canEdit   = isPMSupervisor;
+
+  // PM Staff users available for project assignment (PM Supervisor only)
+  const pmStaffUsers = users.filter(u => u.role === 'Project Manager' && u.jobPosition === 'PM Staff');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [showArchived, setShowArchived] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
+  // PM Supervisor: assign project to PM Staff
+  const [assignPMOpen, setAssignPMOpen] = useState(false);
+  const [assignPMProject, setAssignPMProject] = useState<Project | null>(null);
+  const [assignPMUserId, setAssignPMUserId] = useState('');
+
   const filteredProjects = projects.filter(project => {
+    // Separate active vs archived
+    const isArchived = project.stage === 'Archived';
+    if (showArchived ? !isArchived : isArchived) return false;
+
     // PM Staff: only sees their assigned projects
     if (isPMStaff && currentUser) {
-      const isAssigned =
-        project.manager === currentUser.name ||
+      const isAssigned = project.manager === currentUser.name ||
         (project.assignedPMId !== undefined && project.assignedPMId === currentUser.id);
       if (!isAssigned) return false;
+    }
+    // Staff: only sees projects they are on
+    if (role === 'Staff' && currentUser) {
+      if (!project.team.includes(currentUser.name)) return false;
     }
 
     const matchesSearch =
@@ -181,12 +194,33 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
           <h1 className="text-2xl font-bold text-slate-800">Projects</h1>
           <p className="text-slate-500">Manage and track all your projects in one place.</p>
         </div>
-        {canCreate && (
-          <Button className="bg-blue-600 hover:bg-blue-700" onClick={openNew}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Active / Archived toggle */}
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+            <button
+              onClick={() => setShowArchived(false)}
+              className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                !showArchived ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setShowArchived(true)}
+              className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                showArchived ? 'bg-slate-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              Archived ({projects.filter(p => p.stage === 'Archived').length})
+            </button>
+          </div>
+          {canCreate && !showArchived && (
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={openNew}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -309,6 +343,14 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                         Edit Project
                       </DropdownMenuItem>
                     )}
+                    {isPMSupervisor && (
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        setTimeout(() => { setAssignPMProject(project); setAssignPMUserId(project.assignedPMId ?? ''); setAssignPMOpen(true); }, 0);
+                      }}>
+                        Assign to PM Staff
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem>Generate Report</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -316,13 +358,24 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
 
               <p className="text-sm text-slate-500 mb-3 line-clamp-1">{project.client}</p>
 
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
                 <Badge variant="outline" className={getStatusColor(project.status)}>
                   {project.status}
                 </Badge>
                 <Badge className={getTypeColor(project.type)}>
                   {project.type}
                 </Badge>
+                {isPMSupervisor && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    project.assignedPMId
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {project.assignedPMId
+                      ? `PM: ${pmStaffUsers.find(u => u.id === project.assignedPMId)?.name ?? project.manager}`
+                      : 'Unassigned'}
+                  </span>
+                )}
               </div>
 
               <div className="mb-4">
@@ -457,8 +510,8 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                     value={form.manager}
                     onChange={e => setField('manager', e.target.value)}
                     placeholder="e.g. Engr. Patricia Lim"
-                    readOnly={isPM}
-                    className={isPM ? 'bg-slate-50 text-slate-600' : ''}
+                    readOnly={isPMStaff}
+                    className={isPMStaff ? 'bg-slate-50 text-slate-600' : ''}
                   />
                 </div>
               )}
@@ -484,18 +537,6 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                 />
               </div>
 
-              {staffList.length > 0 && !isBDSupervisor && (
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Team Members</Label>
-                  <StaffPicker
-                    staffList={staffList}
-                    selected={form.team}
-                    onChange={team => setField('team', team)}
-                    multiple
-                    dropLabel="Drag staff here to add to the project team"
-                  />
-                </div>
-              )}
             </div>
 
             <DialogFooter className="pt-2">
@@ -507,6 +548,50 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* PM Supervisor — Assign to PM Staff Dialog */}
+      <Dialog open={assignPMOpen} onOpenChange={setAssignPMOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Assign to PM Staff</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-slate-600">
+              Project: <span className="font-medium">{assignPMProject?.name}</span>
+            </p>
+            <div className="space-y-1.5">
+              <Label>PM Staff Member</Label>
+              <Select value={assignPMUserId} onValueChange={setAssignPMUserId}>
+                <SelectTrigger><SelectValue placeholder="Select PM Staff" /></SelectTrigger>
+                <SelectContent>
+                  {pmStaffUsers.map(u => (
+                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {pmStaffUsers.length === 0 && (
+                <p className="text-xs text-amber-600">No PM Staff accounts found. Ask Admin to create one.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignPMOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!assignPMUserId}
+              onClick={() => {
+                const user = pmStaffUsers.find(u => u.id === assignPMUserId);
+                if (assignPMProject && user) {
+                  onEditProject({ ...assignPMProject, assignedPMId: user.id, manager: user.name });
+                }
+                setAssignPMOpen(false);
+              }}
+            >
+              Confirm Assignment
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

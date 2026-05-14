@@ -18,6 +18,7 @@ interface LeaveRequestsProps {
   leaveRequests: LeaveRequest[];
   currentUser: UserType;
   onResolve: (id: string, decision: 'Approved' | 'Denied') => void;
+  onMarkReturned: (staffName: string) => void;
 }
 
 const getStatusColor = (status: string) => {
@@ -48,7 +49,7 @@ function daysBetween(start: string, end: string) {
   return Math.max(1, Math.round(diff) + 1);
 }
 
-export function LeaveRequests({ leaveRequests, onResolve }: LeaveRequestsProps) {
+export function LeaveRequests({ leaveRequests, onResolve, onMarkReturned }: LeaveRequestsProps) {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [reviewTarget, setReviewTarget] = useState<LeaveRequest | null>(null);
   const [reviewNote, setReviewNote] = useState('');
@@ -159,6 +160,17 @@ export function LeaveRequests({ leaveRequests, onResolve }: LeaveRequestsProps) 
                       Review
                     </Button>
                   </div>
+                )}
+                {req.status === 'Approved' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 border-blue-200 text-blue-600 hover:bg-blue-50"
+                    onClick={() => onMarkReturned(req.staffName)}
+                    title="Mark staff as returned from leave"
+                  >
+                    Mark Returned
+                  </Button>
                 )}
               </div>
             </CardContent>

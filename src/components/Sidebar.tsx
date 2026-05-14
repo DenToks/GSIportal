@@ -15,6 +15,7 @@ import {
   Truck,
   ScrollText,
   Settings,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,7 @@ export type View =
   | 'assets'
   | 'activity-logs'
   | 'schedule'
+  | 'deletion-requests'
   | 'system-settings';
 
 interface SidebarProps {
@@ -48,6 +50,7 @@ interface SidebarProps {
   jobPosition?: string;
   pendingApprovalsCount?: number;
   pendingLeaveCount?: number;
+  pendingDeletionCount?: number;
 }
 
 interface MenuItem {
@@ -75,6 +78,7 @@ function buildMenu(
   jobPosition: string | undefined,
   pendingApprovalsCount: number,
   pendingLeaveCount: number,
+  pendingDeletionCount: number,
 ): MenuItem[] {
   if (role === 'Client') {
     return [
@@ -120,9 +124,10 @@ function buildMenu(
   if (role === 'Project Manager') {
     if (jobPosition === 'BD Supervisor') {
       return [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'projects',  label: 'Projects',  icon: FolderKanban },
-        { id: 'reports',   label: 'Reports',   icon: FileBarChart },
+        { id: 'dashboard',          label: 'Dashboard',         icon: LayoutDashboard },
+        { id: 'projects',           label: 'Projects',          icon: FolderKanban },
+        { id: 'deletion-requests',  label: 'Deletion Requests', icon: Trash2, badge: pendingDeletionCount },
+        { id: 'reports',            label: 'Reports',           icon: FileBarChart },
       ];
     }
     if (jobPosition === 'PM Supervisor') {
@@ -164,8 +169,9 @@ export function Sidebar({
   jobPosition,
   pendingApprovalsCount = 0,
   pendingLeaveCount = 0,
+  pendingDeletionCount = 0,
 }: SidebarProps) {
-  const menuItems = buildMenu(role, jobPosition, pendingApprovalsCount, pendingLeaveCount);
+  const menuItems = buildMenu(role, jobPosition, pendingApprovalsCount, pendingLeaveCount, pendingDeletionCount);
   const isClient = role === 'Client';
 
   // Subtitle shown under logo

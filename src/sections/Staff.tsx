@@ -61,6 +61,7 @@ interface StaffProps {
     reason: string;
   }) => void;
   onDirectRoleChange: (userId: string, newRole: Role) => void;
+  onUpdateUserJobPosition: (userId: string, jobPosition: string) => void;
   onUpdateStaffSystemRole: (staffId: string, systemRole: string) => void;
   onAssignProject: (staffId: string, projectId: string) => void;
   onAddStaff: (member: StaffType) => void;
@@ -82,6 +83,24 @@ const EMPTY_STAFF_FORM = {
 const JOB_POSITIONS: Record<string, string[]> = {
   'Project Manager': ['BD Supervisor', 'PM Supervisor', 'PM Staff'],
   'Supervisor':      ['TI Supervisor', 'Support Supervisor'],
+};
+
+const getRoleFamilyFromLabel = (label: string): Role => {
+  switch (label) {
+    case 'Administrator':
+      return 'Admin';
+    case 'BD Supervisor':
+    case 'PM Supervisor':
+    case 'PM Staff':
+      return 'Project Manager';
+    case 'TI Supervisor':
+    case 'Support Supervisor':
+      return 'Supervisor';
+    case 'Client':
+      return 'Client';
+    default:
+      return 'Staff';
+  }
 };
 
 const ROLE_OPTIONS: Role[] = [
@@ -136,6 +155,7 @@ export function Staff({
   projects,
   onSubmitRoleRequest,
   onDirectRoleChange,
+  onUpdateUserJobPosition,
   onUpdateStaffSystemRole,
   onAssignProject,
   onAddStaff,
@@ -151,6 +171,8 @@ export function Staff({
   const [roleTargetStaffId, setRoleTargetStaffId] = useState<string>('');
   const [roleTargetName, setRoleTargetName] = useState<string>('');
   const [requestedRole, setRequestedRole] = useState<Role>('Staff');
+  const [selectedSystemRole, setSelectedSystemRole] = useState<string>('Staff');
+  const [selectedJobPosition, setSelectedJobPosition] = useState<string>('');
   const [roleReason, setRoleReason] = useState('');
   const [reasonError, setReasonError] = useState('');
 
@@ -160,6 +182,17 @@ export function Staff({
 
   const [addStaffOpen, setAddStaffOpen] = useState(false);
   const [staffForm, setStaffForm] = useState(EMPTY_STAFF_FORM);
+
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailStaffId, setDetailStaffId] = useState<string>('');
+  const [detailStaffName, setDetailStaffName] = useState<string>('');
+
+  const isAdminAccount = (member: StaffType) => {
+    const matchedUser = users.find(
+      (u) => u.email.toLowerCase() === member.email.toLowerCase() || u.name === member.name,
+    );
+    return matchedUser?.role === 'Admin' || member.role === 'Administrator';
+  };
 
   const setStaffField = <K extends keyof typeof EMPTY_STAFF_FORM>(key: K, value: (typeof EMPTY_STAFF_FORM)[K]) => {
     setStaffForm(prev => ({ ...prev, [key]: value }));
@@ -202,8 +235,8 @@ export function Staff({
   };
 
   const filteredStaff = useMemo(
-    () =>
-      staffList.filter((member) => {
+    () => {
+      const visible = staffList.filter((member) => {
         const matchedUser = users.find(
           (u) => u.email.toLowerCase() === member.email.toLowerCase() || u.name === member.name,
         );
@@ -213,7 +246,13 @@ export function Staff({
         }
 
         if (currentUser.role === 'Supervisor') {
-          if (!matchedUser || matchedUser.role !== 'Staff') return false;
+          // Exclude users whose account role is NOT Staff (PM Staff, PM Supervisor, etc.)
+          // Staff with no account are included (assumed to be field workers)
+          if (matchedUser && matchedUser.role !== 'Staff') return false;
+        }
+
+        if (matchedUser?.role === 'Admin' || member.role === 'Administrator') {
+          return false;
         }
 
         if (currentUser.role !== 'Admin' && currentUser.role !== 'Project Manager' && currentUser.role !== 'Supervisor') {
@@ -229,18 +268,27 @@ export function Staff({
           departmentFilter === 'all' || member.department === departmentFilter;
         const matchesStatus = statusFilter === 'all' || member.status === statusFilter;
         return matchesSearch && matchesDepartment && matchesStatus;
-      }),
+      });
+
+      const seen = new Set<string>();
+      return visible.filter((member) => {
+        const key = member.email.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    },
     [staffList, searchQuery, departmentFilter, statusFilter, currentUser.role, currentUser.jobPosition, users],
   );
 
   const stats = {
-    total: staffList.length,
-    available: staffList.filter((s) => s.status === 'Available').length,
-    assigned: staffList.filter((s) => s.status === 'Assigned').length,
-    onLeave: staffList.filter((s) => s.status === 'On Leave').length,
+    total: filteredStaff.length,
+    available: filteredStaff.filter((s) => s.status === 'Available').length,
+    assigned: filteredStaff.filter((s) => s.status === 'Assigned').length,
+    onLeave: filteredStaff.filter((s) => s.status === 'On Leave').length,
   };
 
-  const departments = [...new Set(staffList.map((s) => s.department))];
+  const departments = [...new Set(filteredStaff.map((s) => s.department))];
 
   const matchUser = (member: StaffType): User | undefined =>
     users.find(
@@ -254,9 +302,14 @@ export function Staff({
     if (u) {
       setRoleTargetUserId(u.id);
       setRequestedRole(u.role);
+      setSelectedSystemRole(getRoleFamilyFromLabel(u.jobPosition ?? u.role));
+      setSelectedJobPosition(u.jobPosition ?? '');
     } else {
       setRoleTargetUserId('');
-      setRequestedRole((member.systemRole as Role) ?? 'Staff');
+      const fallbackLabel = member.systemRole ?? member.role;
+      setRequestedRole(getRoleFamilyFromLabel(fallbackLabel));
+      setSelectedSystemRole(getRoleFamilyFromLabel(fallbackLabel));
+      setSelectedJobPosition(JOB_POSITIONS[getRoleFamilyFromLabel(fallbackLabel)]?.includes(fallbackLabel) ? fallbackLabel : '');
     }
     setRoleDialogMode(mode);
     setRoleReason('');
@@ -282,10 +335,13 @@ export function Staff({
   };
 
   const submitDirectRoleChange = () => {
+    const nextSystemLabel = selectedJobPosition || (selectedSystemRole === 'Admin' ? 'Administrator' : selectedSystemRole);
     if (roleTargetUserId) {
-      onDirectRoleChange(roleTargetUserId, requestedRole);
+      const nextRole = selectedSystemRole as Role;
+      onDirectRoleChange(roleTargetUserId, nextRole);
+      onUpdateUserJobPosition(roleTargetUserId, nextSystemLabel);
     }
-    onUpdateStaffSystemRole(roleTargetStaffId, requestedRole);
+    onUpdateStaffSystemRole(roleTargetStaffId, nextSystemLabel);
     setRoleDialogOpen(false);
   };
 
@@ -306,6 +362,19 @@ export function Staff({
       return member.assignedProjectIds.length;
     }
     return member.currentProjects;
+  };
+
+  const getAssignedProjectsForStaff = (member: StaffType): Project[] => {
+    const matchedUser = matchUser(member);
+    if (!matchedUser) return [];
+    // Find projects where this user is assigned as PM Staff
+    return projects.filter(p => p.assignedPMId === matchedUser.id);
+  };
+
+  const openDetailDialog = (member: StaffType) => {
+    setDetailStaffId(member.id);
+    setDetailStaffName(member.name);
+    setDetailDialogOpen(true);
   };
 
   return (
@@ -454,11 +523,10 @@ export function Staff({
                   <TableCell>
                     {(() => {
                       const u = matchUser(member);
-                      const sysRole = u?.role ?? member.systemRole;
-                      const displayLabel = u?.jobPosition ?? sysRole;
+                      const displayLabel = u?.jobPosition ?? member.systemRole ?? u?.role ?? member.role;
                       if (!displayLabel) return <span className="text-xs text-slate-400">—</span>;
                       return (
-                        <Badge variant="outline" className={getSystemRoleColor(sysRole ?? '')}>
+                        <Badge variant="outline" className={getSystemRoleColor(getRoleFamilyFromLabel(displayLabel))}>
                           {displayLabel}
                         </Badge>
                       );
@@ -466,7 +534,24 @@ export function Staff({
                   </TableCell>
                   <TableCell className="text-sm text-slate-600">{member.email}</TableCell>
                   <TableCell className="text-center font-medium text-slate-700">
-                    {projectsForStaff(member)}
+                    {(() => {
+                      const matchedUser = matchUser(member);
+                      if (matchedUser) {
+                        const assignedProjects = projects.filter(p => p.assignedPMId === matchedUser.id);
+                        if (assignedProjects.length > 0) {
+                          return (
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {assignedProjects.map(p => (
+                                <Badge key={p.id} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                  {p.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          );
+                        }
+                      }
+                      return projectsForStaff(member) > 0 ? projectsForStaff(member) : '—';
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusColor(member.status)}>
@@ -478,7 +563,7 @@ export function Staff({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {currentUser.role === 'Admin' && (
+                      {currentUser.role === 'Admin' && !isAdminAccount(member) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -518,7 +603,7 @@ export function Staff({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>View Profile</DropdownMenuItem>
                           <DropdownMenuItem>Edit Details</DropdownMenuItem>
-                          <DropdownMenuItem>View Assignments</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openDetailDialog(member)}>View Assignments</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -577,19 +662,59 @@ export function Staff({
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>{roleDialogMode === 'manage' ? 'New Role' : 'Requested Role'}</Label>
-              <Select value={requestedRole} onValueChange={(v) => setRequestedRole(v as Role)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLE_OPTIONS.filter(r => roleDialogMode === 'manage' ? r !== 'Admin' : true).map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {roleDialogMode === 'manage' ? (
+              <>
+                <div className="space-y-2">
+                  <Label>System Role</Label>
+                  <Select
+                    value={selectedSystemRole}
+                    onValueChange={(v) => {
+                      setSelectedSystemRole(v as Role);
+                      setSelectedJobPosition('');
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLE_OPTIONS.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {JOB_POSITIONS[selectedSystemRole] && (
+                  <div className="space-y-2">
+                    <Label>Job Position</Label>
+                    <Select value={selectedJobPosition} onValueChange={setSelectedJobPosition}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {JOB_POSITIONS[selectedSystemRole].map((pos) => (
+                          <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label>Requested Role</Label>
+                <Select value={requestedRole} onValueChange={(v) => setRequestedRole(v as Role)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map((r) => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {roleDialogMode === 'request' && (
               <div className="space-y-2">
@@ -806,6 +931,61 @@ export function Staff({
             </Button>
             <Button className="bg-blue-600 hover:bg-blue-700" onClick={submitAssign}>
               Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Staff Detail / Assignments Dialog */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[540px]">
+          <DialogHeader>
+            <DialogTitle>Assignments for {detailStaffName}</DialogTitle>
+            <DialogDescription>
+              Projects currently assigned to this team member.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {(() => {
+              const staffMember = filteredStaff.find(m => m.id === detailStaffId);
+              if (!staffMember) return <p className="text-sm text-slate-500">Staff member not found.</p>;
+
+              const assignedProjects = getAssignedProjectsForStaff(staffMember);
+
+              if (assignedProjects.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                    <p className="text-slate-600">No projects assigned yet</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2">
+                  {assignedProjects.map(project => (
+                    <div
+                      key={project.id}
+                      className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium text-slate-800">{project.name}</div>
+                        <div className="text-xs text-slate-500">{project.client}</div>
+                      </div>
+                      <Badge variant="outline" className="ml-2">
+                        {project.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

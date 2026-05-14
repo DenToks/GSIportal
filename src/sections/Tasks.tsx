@@ -98,7 +98,7 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
   const isStaff = role === 'Staff';
   const isAdmin = role === 'Admin';
   const isPMStaff = role === 'Project Manager' && currentUser?.jobPosition === 'PM Staff';
-  const canManageTasks = isAdmin || isPMStaff;
+  const canManageTasks = isPMStaff;
   const manageableProjects = isPMStaff && currentUser
     ? projects.filter((project) =>
         project.assignedPMId === currentUser.id || project.manager === currentUser.name,

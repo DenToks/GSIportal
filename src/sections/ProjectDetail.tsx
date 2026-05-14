@@ -56,6 +56,8 @@ interface ProjectDetailProps {
   tasks: Task[];
   onBack: () => void;
   onEditProject: (updated: Project) => void;
+  onDeleteProject: (projectId: string) => void;
+  onRequestDeletion: (projectId: string, projectName: string, reason: string) => void;
   onAddTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
   role?: Role;
@@ -118,12 +120,17 @@ const initialComments: ActivityEntry[] = [
   { id: 3, user: 'Engr. Maria Santos', comment: 'Laboratory testing for Batch A samples is complete. Results look good.', timestamp: '2024-03-27T16:45:00' },
 ];
 
-export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask, onEditTask, role, jobPosition, staffList = [], currentUser, users = [] }: ProjectDetailProps) {
+export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteProject, onRequestDeletion, onAddTask, onEditTask, role, jobPosition, staffList = [], currentUser, users = [] }: ProjectDetailProps) {
   const isStaff = role === 'Staff';
   const isSupervisor = role === 'Supervisor';
-  const isPMSupervisor = role === 'Project Manager' && jobPosition === 'PM Supervisor';
-  // BD Supervisor creates projects but doesn't manage them after — PM Supervisor/Staff do
-  const isPM = role === 'Project Manager' && jobPosition !== 'BD Supervisor';
+  const isBDSupervisor  = role === 'Project Manager' && jobPosition === 'BD Supervisor';
+  const isPMSupervisor  = role === 'Project Manager' && jobPosition === 'PM Supervisor';
+  const isAdmin = role === 'Admin';
+  // PM Staff manages tasks within a project; BD Supervisor is excluded from edit/task controls
+  const isPM = role === 'Project Manager' && !isBDSupervisor;
+  // BD Supervisor can delete directly; Admin and PM Supervisor must request deletion
+  const canDirectDelete = isBDSupervisor;
+  const canRequestDelete = (isPMSupervisor || isAdmin) && !isBDSupervisor;
 
   // Supervisor only picks Staff-role users for manpower assignment
   const pickableStaff = isSupervisor
@@ -135,10 +142,24 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
 
   // PM Supervisor only picks PM Staff for assignment
   const pickablePMStaff = isPMSupervisor
-    ? staffList.filter(m => {
-        const u = users.find(u => u.email.toLowerCase() === m.email.toLowerCase() || u.name === m.name);
-        return u && u.role === 'Project Manager' && u.jobPosition === 'PM Staff';
-      })
+    ? users
+        .filter(u => u.jobPosition === 'PM Staff')
+        .map(u => {
+          const staffRecord = staffList.find(m => m.email.toLowerCase() === u.email.toLowerCase() || m.name === u.name);
+          return staffRecord ?? {
+            id: u.id,
+            name: u.name,
+            role: 'Project Management Staff',
+            systemRole: u.jobPosition,
+            department: 'Project Management',
+            email: u.email,
+            phone: '',
+            avatar: u.avatar,
+            status: 'Available' as const,
+            currentProjects: 0,
+            workload: 0,
+          } as StaffType;
+        })
     : staffList;
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const [comments, setComments] = useState<ActivityEntry[]>(initialComments);
@@ -186,6 +207,9 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
 
   const [assignTeamOpen, setAssignTeamOpen] = useState(false);
   const [assignTeam, setAssignTeam] = useState<string[]>(project.team);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [requestDeleteOpen, setRequestDeleteOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
   const [assignPMStaffOpen, setAssignPMStaffOpen] = useState(false);
   const [assignPMStaff, setAssignPMStaff] = useState<string[]>(project.team);
 
@@ -225,11 +249,14 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-slate-800">{project.name}</h1>
               <Badge variant="outline" className={getStatusColor(project.status)}>
                 {project.status}
               </Badge>
+              {project.stage === 'Archived' && (
+                <Badge className="bg-slate-600 text-white">Archived</Badge>
+              )}
             </div>
             <p className="text-slate-500">{project.id} • {project.client}</p>
           </div>
@@ -251,7 +278,7 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
               Assign PM Staff
             </Button>
           )}
-          {isPM && (
+          {isPMSupervisor && (
             <Button variant="outline" onClick={openEdit}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
@@ -265,8 +292,26 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem>Generate Report</DropdownMenuItem>
-              {isPM && <DropdownMenuItem>Archive Project</DropdownMenuItem>}
-              {isPM && <DropdownMenuItem className="text-red-600">Delete Project</DropdownMenuItem>}
+              {(canDirectDelete || canRequestDelete) && project.stage !== 'Archived' && (
+                <DropdownMenuItem onClick={() => onEditProject({ ...project, stage: 'Archived' })}>
+                  Archive Project
+                </DropdownMenuItem>
+              )}
+              {(canDirectDelete || canRequestDelete) && project.stage === 'Archived' && (
+                <DropdownMenuItem onClick={() => onEditProject({ ...project, stage: undefined })}>
+                  Restore Project
+                </DropdownMenuItem>
+              )}
+              {canDirectDelete && (
+                <DropdownMenuItem className="text-red-600" onClick={() => setDeleteConfirmOpen(true)}>
+                  Delete Project
+                </DropdownMenuItem>
+              )}
+              {canRequestDelete && (
+                <DropdownMenuItem className="text-red-600" onClick={() => { setDeleteReason(''); setRequestDeleteOpen(true); }}>
+                  Request Deletion
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -694,6 +739,75 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Project</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-2">
+            <p className="text-sm text-slate-700">
+              Are you sure you want to delete <span className="font-semibold">{project.name}</span>?
+            </p>
+            <p className="text-xs text-slate-400">This action cannot be undone. All associated tasks will remain but will no longer be linked to this project.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                onDeleteProject(project.id);
+                setDeleteConfirmOpen(false);
+                onBack();
+              }}
+            >
+              Delete Project
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Request Deletion Dialog (Admin / PM Supervisor) */}
+      <Dialog open={requestDeleteOpen} onOpenChange={setRequestDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Request Project Deletion</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-slate-600">
+              A deletion request will be sent to the BD Supervisor who created this project.
+              They must approve before it is deleted.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">
+                Reason for deletion <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={deleteReason}
+                onChange={e => setDeleteReason(e.target.value)}
+                placeholder="Briefly explain why this project should be deleted..."
+                rows={3}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setRequestDeleteOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              disabled={!deleteReason.trim()}
+              onClick={() => {
+                onRequestDeletion(project.id, project.name, deleteReason.trim());
+                setRequestDeleteOpen(false);
+                setDeleteReason('');
+              }}
+            >
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Supervisor — Assign Manpower Dialog */}
       <Dialog open={assignTeamOpen} onOpenChange={setAssignTeamOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -745,7 +859,10 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onAddTask
           <DialogFooter className="pt-2">
             <Button variant="outline" onClick={() => setAssignPMStaffOpen(false)}>Cancel</Button>
             <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
-              onEditProject({ ...project, team: assignPMStaff });
+              const managerName = assignPMStaff.length > 0 ? assignPMStaff[0] : project.manager;
+              const u = users.find(x => x.name === managerName);
+              const assignedPMId = u ? u.id : project.assignedPMId;
+              onEditProject({ ...project, team: assignPMStaff, manager: managerName, assignedPMId });
               setAssignPMStaffOpen(false);
             }}>
               Save Assignment
