@@ -90,7 +90,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
   const isPMSupervisor  = role === 'Project Manager' && jobPosition === 'PM Supervisor';
   const isPMStaff       = role === 'Project Manager' && jobPosition === 'PM Staff';
   const canCreate = isBDSupervisor;
-  const canEdit   = isPMSupervisor;
+  const canEdit   = isPMSupervisor || isBDSupervisor;
 
   // PM Staff users available for project assignment (PM Supervisor only)
   const pmStaffUsers = users.filter(u => u.role === 'Project Manager' && u.jobPosition === 'PM Staff');

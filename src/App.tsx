@@ -328,9 +328,22 @@ function App() {
   };
 
   const handleEditProject = (updated: Project) => {
-    // Sync staff statuses when team membership changes (TI Supervisor assign/remove)
     const old = projects.find(p => p.id === updated.id);
     if (old) {
+      // Smart activity log based on what changed
+      if (updated.assignedPMId !== old.assignedPMId && updated.assignedPMId) {
+        pushLog('Assigned PM Staff to project', `${updated.manager} → ${updated.name}`);
+      } else if (updated.assignedPMId !== old.assignedPMId && !updated.assignedPMId) {
+        pushLog('Unassigned PM Staff from project', updated.name);
+      } else if (JSON.stringify(updated.team) !== JSON.stringify(old.team)) {
+        pushLog('Updated project team', updated.name);
+      } else if (updated.stage !== old.stage) {
+        pushLog(`${updated.stage === 'Archived' ? 'Archived' : 'Restored'} project`, updated.name);
+      } else {
+        pushLog('Updated project details', updated.name);
+      }
+
+      // Sync staff statuses when team membership changes (TI Supervisor assign/remove)
       const added   = updated.team.filter(name => !old.team.includes(name));
       const removed = old.team.filter(name => !updated.team.includes(name));
       if (added.length > 0 || removed.length > 0) {
@@ -358,7 +371,8 @@ function App() {
         return newMembers.length > 0 ? { ...p, team: [...p.team, ...newMembers] } : p;
       }));
     }
-    pushLog('Created task', task.title);
+    const taskProjectName = projects.find(p => p.id === task.projectId)?.name ?? task.projectId;
+    pushLog('Created task', `${task.title} (${taskProjectName})`);
   };
 
   const handleEditTask = (updated: Task) => {
@@ -370,6 +384,7 @@ function App() {
         return newMembers.length > 0 ? { ...p, team: [...p.team, ...newMembers] } : p;
       }));
     }
+    pushLog('Updated task', updated.title);
   };
 
   const handleAddStaff = (member: StaffType) => {
@@ -382,7 +397,9 @@ function App() {
   };
 
   const handleUpdateTaskStatus = (taskId: string, newStatus: Task['status']) => {
+    const taskTitle = tasks.find(t => t.id === taskId)?.title ?? taskId;
     setTasks(prev => prev.map(task => task.id === taskId ? { ...task, status: newStatus } : task));
+    pushLog('Updated task status', `${taskTitle} → ${newStatus}`);
   };
 
   const handleMarkNotificationRead = (notificationId: string) => {
