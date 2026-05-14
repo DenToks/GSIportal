@@ -339,6 +339,9 @@ function App() {
         pushLog('Updated project team', updated.name);
       } else if (updated.stage !== old.stage) {
         pushLog(`${updated.stage === 'Archived' ? 'Archived' : 'Restored'} project`, updated.name);
+      } else if ((updated.documents?.length ?? 0) > (old.documents?.length ?? 0)) {
+        const newDoc = updated.documents?.[updated.documents.length - 1];
+        pushLog('Uploaded document', `${newDoc?.name ?? 'File'} – ${updated.name}`);
       } else {
         pushLog('Updated project details', updated.name);
       }
@@ -376,7 +379,9 @@ function App() {
   };
 
   const handleEditTask = (updated: Task) => {
-    setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+    const old = tasks.find(t => t.id === updated.id);
+    const updatedTasks = tasks.map(t => t.id === updated.id ? updated : t);
+    setTasks(updatedTasks);
     if (updated.assignedTo.length > 0) {
       setProjects(prev => prev.map(p => {
         if (p.id !== updated.projectId) return p;
@@ -384,7 +389,21 @@ function App() {
         return newMembers.length > 0 ? { ...p, team: [...p.team, ...newMembers] } : p;
       }));
     }
-    pushLog('Updated task', updated.title);
+    // Auto-recalculate project progress when task status changes
+    if (old?.status !== updated.status) {
+      const projectTasks = updatedTasks.filter(t => t.projectId === updated.projectId);
+      const completed = projectTasks.filter(t => t.status === 'Completed').length;
+      const progress = projectTasks.length > 0 ? Math.round((completed / projectTasks.length) * 100) : 0;
+      setProjects(prev => prev.map(p => p.id === updated.projectId ? { ...p, progress } : p));
+    }
+    if (updated.status === 'Completed' && updated.completionNote) {
+      pushLog('Completed task', `${updated.title} – ${updated.completionNote.slice(0, 60)}`);
+    } else if ((updated.attachments?.length ?? 0) > (old?.attachments?.length ?? 0)) {
+      const newFile = updated.attachments?.[updated.attachments.length - 1];
+      pushLog('Uploaded task proof', `${newFile?.name ?? 'File'} – ${updated.title}`);
+    } else {
+      pushLog('Updated task', updated.title);
+    }
   };
 
   const handleAddStaff = (member: StaffType) => {
@@ -397,9 +416,18 @@ function App() {
   };
 
   const handleUpdateTaskStatus = (taskId: string, newStatus: Task['status']) => {
-    const taskTitle = tasks.find(t => t.id === taskId)?.title ?? taskId;
-    setTasks(prev => prev.map(task => task.id === taskId ? { ...task, status: newStatus } : task));
+    const task = tasks.find(t => t.id === taskId);
+    const taskTitle = task?.title ?? taskId;
+    const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+    setTasks(updatedTasks);
     pushLog('Updated task status', `${taskTitle} → ${newStatus}`);
+    // Auto-recalculate project progress from completed tasks
+    if (task?.projectId) {
+      const projectTasks = updatedTasks.filter(t => t.projectId === task.projectId);
+      const completed = projectTasks.filter(t => t.status === 'Completed').length;
+      const progress = projectTasks.length > 0 ? Math.round((completed / projectTasks.length) * 100) : 0;
+      setProjects(prev => prev.map(p => p.id === task.projectId ? { ...p, progress } : p));
+    }
   };
 
   const handleMarkNotificationRead = (notificationId: string) => {
@@ -655,7 +683,7 @@ function App() {
             />
           )}
           {!isClient && currentView === 'tasks' && (
-            <Tasks tasks={activeTasks} projects={projects} onUpdateStatus={handleUpdateTaskStatus} onAddTask={handleAddTask} onEditTask={handleEditTask} role={currentUser.role} staffList={computedStaffList} currentUser={currentUser} />
+            <Tasks tasks={activeTasks} projects={projects} onUpdateStatus={handleUpdateTaskStatus} onAddTask={handleAddTask} onEditTask={handleEditTask} onProjectClick={handleProjectClick} role={currentUser.role} staffList={computedStaffList} currentUser={currentUser} />
           )}
           {!isClient && currentView === 'staff' && (
             <Staff
@@ -695,11 +723,13 @@ function App() {
               onRequestDeletion={handleRequestDeletion}
               onAddTask={handleAddTask}
               onEditTask={handleEditTask}
+              onUpdateTaskStatus={handleUpdateTaskStatus}
               role={currentUser.role}
               jobPosition={jobPosition}
               staffList={computedStaffList}
               currentUser={currentUser}
               users={users}
+              activityLogs={activityLogs}
             />
           )}
           {!isClient && currentView === 'approvals' && currentUser.role === 'Admin' && (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   ArrowLeft,
   Calendar,
@@ -10,7 +10,7 @@ import {
   MoreHorizontal,
   Download,
   Edit,
-  MessageSquare
+  Clock,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,14 +42,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StaffPicker } from '@/components/StaffPicker';
-import type { Project, Task, Role, Staff as StaffType, User } from '@/types';
-
-interface ActivityEntry {
-  id: number;
-  user: string;
-  comment: string;
-  timestamp: string;
-}
+import type { Project, Task, Role, Staff as StaffType, User, ActivityLog, ProjectDocument, TaskAttachment } from '@/types';
 
 interface ProjectDetailProps {
   project: Project;
@@ -60,11 +53,13 @@ interface ProjectDetailProps {
   onRequestDeletion: (projectId: string, projectName: string, reason: string) => void;
   onAddTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
+  onUpdateTaskStatus?: (taskId: string, status: Task['status']) => void;
   role?: Role;
   jobPosition?: string;
   staffList?: StaffType[];
   currentUser?: User;
   users?: User[];
+  activityLogs?: ActivityLog[];
 }
 
 const getStatusColor = (status: string) => {
@@ -107,27 +102,15 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
-const projectDocuments = [
-  { id: 1, name: 'Project Proposal.pdf', size: '2.4 MB', uploadedBy: 'Engr. Patricia Lim', uploadedAt: '2024-01-10' },
-  { id: 2, name: 'Technical Specifications.pdf', size: '5.1 MB', uploadedBy: 'Engr. Carlos Reyes', uploadedAt: '2024-01-15' },
-  { id: 3, name: 'Site Investigation Report.pdf', size: '8.7 MB', uploadedBy: 'Engr. Maria Santos', uploadedAt: '2024-02-20' },
-  { id: 4, name: 'Laboratory Test Results.xlsx', size: '1.2 MB', uploadedBy: 'Engr. John Cruz', uploadedAt: '2024-03-25' },
-];
 
-const initialComments: ActivityEntry[] = [
-  { id: 1, user: 'Engr. Patricia Lim', comment: 'Initial site visit completed. Soil conditions are as expected.', timestamp: '2024-01-20T10:30:00' },
-  { id: 2, user: 'Engr. Carlos Reyes', comment: 'Borehole drilling at Station 10+000 is progressing well.', timestamp: '2024-02-15T14:20:00' },
-  { id: 3, user: 'Engr. Maria Santos', comment: 'Laboratory testing for Batch A samples is complete. Results look good.', timestamp: '2024-03-27T16:45:00' },
-];
 
-export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteProject, onRequestDeletion, onAddTask, onEditTask, role, jobPosition, staffList = [], currentUser, users = [] }: ProjectDetailProps) {
+export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteProject, onRequestDeletion, onAddTask, onEditTask, onUpdateTaskStatus, role, jobPosition, staffList = [], currentUser: _currentUser, users = [], activityLogs = [] }: ProjectDetailProps) { // _currentUser used in upload handlers
   const isStaff = role === 'Staff';
   const isSupervisor = role === 'Supervisor';
   const isBDSupervisor  = role === 'Project Manager' && jobPosition === 'BD Supervisor';
   const isPMSupervisor  = role === 'Project Manager' && jobPosition === 'PM Supervisor';
   const isAdmin = role === 'Admin';
-  // PM Staff manages tasks within a project; BD Supervisor is excluded from edit/task controls
-  const isPM = role === 'Project Manager' && !isBDSupervisor;
+  const isPMStaff = role === 'Project Manager' && jobPosition === 'PM Staff';
   // BD Supervisor can delete directly; Admin and PM Supervisor must request deletion
   const canDirectDelete = isBDSupervisor;
   const canRequestDelete = (isPMSupervisor || isAdmin) && !isBDSupervisor;
@@ -162,8 +145,78 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
         })
     : staffList;
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
-  const [comments, setComments] = useState<ActivityEntry[]>(initialComments);
-  const [newComment, setNewComment] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const sizeKB = file.size / 1024;
+      const sizeStr = sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${Math.round(sizeKB)} KB`;
+      const doc: ProjectDocument = {
+        id: `DOC-${Date.now()}`,
+        name: file.name,
+        size: sizeStr,
+        uploadedBy: _currentUser?.name ?? 'Unknown',
+        uploadedAt: new Date().toISOString().slice(0, 10),
+        data: reader.result as string,
+        mimeType: file.type,
+      };
+      onEditProject({ ...project, documents: [...(project.documents ?? []), doc] });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleDownload = (doc: ProjectDocument) => {
+    const link = document.createElement('a');
+    link.href = doc.data;
+    link.download = doc.name;
+    link.click();
+  };
+
+  const proofInputRef = useRef<HTMLInputElement>(null);
+  const [proofTaskId, setProofTaskId] = useState<string | null>(null);
+
+  const handleProofUploadClick = (taskId: string) => {
+    setProofTaskId(taskId);
+    setTimeout(() => proofInputRef.current?.click(), 0);
+  };
+
+  const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !proofTaskId) return;
+    const task = tasks.find(t => t.id === proofTaskId);
+    if (!task) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const sizeKB = file.size / 1024;
+      const sizeStr = sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${Math.round(sizeKB)} KB`;
+      const attachment: TaskAttachment = {
+        id: `ATT-${Date.now()}`,
+        name: file.name,
+        size: sizeStr,
+        uploadedBy: _currentUser?.name ?? 'Unknown',
+        uploadedAt: new Date().toISOString().slice(0, 10),
+        data: reader.result as string,
+        mimeType: file.type,
+      };
+      onEditTask({ ...task, attachments: [...(task.attachments ?? []), attachment] });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+    setProofTaskId(null);
+  };
+
+  const handleDownloadAttachment = (att: TaskAttachment) => {
+    const link = document.createElement('a');
+    link.href = att.data;
+    link.download = att.name;
+    link.click();
+  };
 
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState({
@@ -213,6 +266,49 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
   const [assignPMStaffOpen, setAssignPMStaffOpen] = useState(false);
   const [assignPMStaff, setAssignPMStaff] = useState<string[]>(project.team);
 
+  const [completeDialogTask, setCompleteDialogTask] = useState<Task | null>(null);
+  const [completionNote, setCompletionNote] = useState('');
+  const [completionFile, setCompletionFile] = useState<File | null>(null);
+  const completionFileRef = useRef<HTMLInputElement>(null);
+
+  const handleCompleteSubmit = () => {
+    if (!completeDialogTask || !completionNote.trim()) return;
+    const submitCompletion = (attachment?: TaskAttachment) => {
+      const updated: Task = {
+        ...completeDialogTask,
+        status: 'Completed',
+        completedDate: new Date().toISOString().slice(0, 10),
+        completionNote: completionNote.trim(),
+        attachments: attachment
+          ? [...(completeDialogTask.attachments ?? []), attachment]
+          : completeDialogTask.attachments,
+      };
+      onEditTask(updated);
+      setCompleteDialogTask(null);
+      setCompletionNote('');
+      setCompletionFile(null);
+    };
+    if (completionFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const sizeKB = completionFile.size / 1024;
+        const sizeStr = sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${Math.round(sizeKB)} KB`;
+        submitCompletion({
+          id: `ATT-${Date.now()}`,
+          name: completionFile.name,
+          size: sizeStr,
+          uploadedBy: _currentUser?.name ?? 'Unknown',
+          uploadedAt: new Date().toISOString().slice(0, 10),
+          data: reader.result as string,
+          mimeType: completionFile.type,
+        });
+      };
+      reader.readAsDataURL(completionFile);
+    } else {
+      submitCompletion();
+    }
+  };
+
   const EMPTY_TASK = { title: '', description: '', assignedTo: [] as string[], status: 'Pending' as Task['status'], priority: 'Medium' as Task['priority'], dueDate: '' };
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -242,6 +338,10 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
 
   return (
     <div className="space-y-6">
+      {/* Hidden file inputs — kept at top level so refs are always mounted */}
+      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+      <input ref={proofInputRef} type="file" className="hidden" onChange={handleProofFileChange} />
+      <input ref={completionFileRef} type="file" className="hidden" onChange={e => { setCompletionFile(e.target.files?.[0] ?? null); e.target.value = ''; }} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -262,10 +362,6 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Comment
-          </Button>
           {isSupervisor && (
             <Button variant="outline" onClick={() => { setAssignTeam(project.team); setAssignTeamOpen(true); }}>
               <Users className="w-4 h-4 mr-2" />
@@ -466,7 +562,7 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
         <TabsContent value="tasks" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Project Tasks</h3>
-            {isPM && (
+            {isPMStaff && (
               <Button size="sm" onClick={() => { setEditingTask(null); setTaskForm(EMPTY_TASK); setTaskDialogOpen(true); }}>
                 <ClipboardList className="w-4 h-4 mr-2" />
                 Add Task
@@ -478,8 +574,8 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               <Card key={task.id}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-medium text-slate-800">{task.title}</h4>
                         <Badge variant="outline" className={getTaskStatusColor(task.status)}>
                           {task.status}
@@ -487,9 +583,15 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
                         <Badge className={getPriorityColor(task.priority)}>
                           {task.priority}
                         </Badge>
+                        {(task.attachments?.length ?? 0) > 0 && (
+                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            {task.attachments!.length} proof file{task.attachments!.length > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-slate-500 mt-1">{task.description}</p>
-                      <div className="flex items-center gap-4 mt-3 text-sm text-slate-500">
+                      <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
                         <span className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
                           {task.assignedTo.join(', ')}
@@ -499,19 +601,43 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
                           Due {new Date(task.dueDate).toLocaleDateString()}
                         </span>
                       </div>
+                      {task.completionNote && (
+                        <div className="mt-2 bg-green-50 border border-green-100 rounded px-3 py-2 text-sm text-green-800">
+                          <span className="font-medium">Completion note: </span>{task.completionNote}
+                        </div>
+                      )}
+                      {(task.attachments?.length ?? 0) > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {task.attachments!.map(att => (
+                            <div key={att.id} className="flex items-center gap-2 text-xs bg-slate-50 rounded px-2 py-1 w-fit">
+                              <FileText className="w-3 h-3 text-blue-500" />
+                              <span className="text-slate-700">{att.name}</span>
+                              <span className="text-slate-400">{att.size}</span>
+                              <button onClick={() => handleDownloadAttachment(att)} className="text-blue-500 hover:underline">Download</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        {isPM && (
+                        {isPMStaff && (
                           <DropdownMenuItem onClick={() => setTimeout(() => openEditTask(task), 0)}>Edit Task</DropdownMenuItem>
                         )}
-                        <DropdownMenuItem>Mark as Complete</DropdownMenuItem>
+                        {isStaff && (
+                          <DropdownMenuItem onClick={() => handleProofUploadClick(task.id)}>Upload Proof</DropdownMenuItem>
+                        )}
+                        {task.status !== 'Completed' && isPMStaff && (
+                          <DropdownMenuItem onClick={() => onUpdateTaskStatus?.(task.id, 'Completed')}>Mark as Complete</DropdownMenuItem>
+                        )}
+                        {task.status !== 'Completed' && isStaff && (
+                          <DropdownMenuItem onClick={() => { setCompleteDialogTask(task); setCompletionNote(''); setCompletionFile(null); }}>Mark as Complete</DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -531,129 +657,135 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Project Documents</h3>
             {!isStaff && (
-              <Button size="sm">
+              <Button size="sm" onClick={handleUploadClick}>
                 <FileText className="w-4 h-4 mr-2" />
                 Upload Document
               </Button>
             )}
           </div>
           <div className="space-y-3">
-            {projectDocuments.map((doc) => (
-              <Card key={doc.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-red-600" />
+            {(project.documents ?? []).length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500">No documents uploaded yet.</p>
+              </div>
+            ) : (
+              (project.documents ?? []).map((doc) => (
+                <Card key={doc.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-red-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-slate-800">{doc.name}</h4>
+                          <p className="text-sm text-slate-500">
+                            {doc.size} • Uploaded by {doc.uploadedBy} on {doc.uploadedAt}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium text-slate-800">{doc.name}</h4>
-                        <p className="text-sm text-slate-500">
-                          {doc.size} • Uploaded by {doc.uploadedBy} on {doc.uploadedAt}
-                        </p>
-                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => handleDownload(doc)}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
 
+        {/* Project Activity — read-only log filtered to this project */}
         <TabsContent value="activity" className="space-y-4">
           <h3 className="text-lg font-semibold">Project Activity</h3>
-
-          {/* Only team members, PM, and Admin can post */}
           {(() => {
-            const canPost = currentUser && (
-              ['Admin', 'Project Manager', 'Supervisor'].includes(currentUser.role) ||
-              project.team.includes(currentUser.name)
+            const projectLogs = activityLogs.filter(log =>
+              log.target.includes(project.name)
             );
-            if (!canPost) {
+            if (projectLogs.length === 0) {
               return (
-                <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
-                  <MessageSquare className="w-4 h-4" />
-                  Only project team members can post activity updates.
+                <div className="text-center py-12">
+                  <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500">No activity recorded yet for this project.</p>
                 </div>
               );
             }
             return (
-              <div className="flex gap-3 items-start">
-                <Avatar className="w-9 h-9 shrink-0">
-                  <AvatarFallback className="bg-blue-600 text-white text-xs font-bold">
-                    {currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 flex gap-2">
-                  <input
-                    type="text"
-                    value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newComment.trim()) {
-                        setComments(prev => [...prev, {
-                          id: Date.now(),
-                          user: currentUser.name,
-                          comment: newComment.trim(),
-                          timestamp: new Date().toISOString(),
-                        }]);
-                        setNewComment('');
-                      }
-                    }}
-                    placeholder="Write an activity update and press Enter..."
-                    className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 shrink-0"
-                    disabled={!newComment.trim()}
-                    onClick={() => {
-                      setComments(prev => [...prev, {
-                        id: Date.now(),
-                        user: currentUser.name,
-                        comment: newComment.trim(),
-                        timestamp: new Date().toISOString(),
-                      }]);
-                      setNewComment('');
-                    }}
-                  >
-                    Post
-                  </Button>
-                </div>
+              <div className="space-y-3">
+                {projectLogs.map(log => (
+                  <div key={log.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-xs font-bold text-blue-600">
+                        {log.userName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-slate-800 text-sm">{log.userName}</span>
+                        <span className="text-xs text-slate-400">{log.userRole}</span>
+                      </div>
+                      <p className="text-sm text-slate-600 mt-0.5">{log.action}</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {new Date(log.timestamp).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             );
           })()}
-
-          {/* Activity feed */}
-          <div className="space-y-4">
-            {comments.map((entry) => (
-              <div key={entry.id} className="flex items-start gap-4">
-                <Avatar className="w-10 h-10">
-                  <AvatarFallback className="bg-blue-100 text-blue-600">
-                    {entry.user.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-slate-800">{entry.user}</span>
-                      <span className="text-xs text-slate-500">
-                        {new Date(entry.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-700">{entry.comment}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </TabsContent>
+
       </Tabs>
+
+      {/* Task Completion Dialog — Staff must submit note + optional proof */}
+      <Dialog open={!!completeDialogTask} onOpenChange={() => { setCompleteDialogTask(null); setCompletionNote(''); setCompletionFile(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submit Task Completion</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="font-medium text-slate-800 text-sm">{completeDialogTask?.title}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{completeDialogTask?.description}</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Completion Note <span className="text-red-500">*</span></Label>
+              <Textarea
+                value={completionNote}
+                onChange={e => setCompletionNote(e.target.value)}
+                placeholder="Describe what was completed, findings, or results..."
+                rows={3}
+              />
+              <p className="text-xs text-slate-400">Required — describe what was done.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Attach Proof <span className="text-slate-400 font-normal">(optional)</span></Label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => completionFileRef.current?.click()}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  {completionFile ? completionFile.name : 'Choose File'}
+                </Button>
+                {completionFile && (
+                  <button onClick={() => setCompletionFile(null)} className="text-slate-400 hover:text-red-500">
+                    <span className="text-xs">Remove</span>
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-slate-400">Photo, field data sheet, report, etc.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCompleteDialogTask(null); setCompletionNote(''); setCompletionFile(null); }}>Cancel</Button>
+            <Button className="bg-green-600 hover:bg-green-700" disabled={!completionNote.trim()} onClick={handleCompleteSubmit}>
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Submit & Complete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Task Dialog */}
       <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>

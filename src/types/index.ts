@@ -15,6 +15,16 @@ export interface User {
   clientProjectIds?: string[];
 }
 
+export interface ProjectDocument {
+  id: string;
+  name: string;
+  size: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  data: string;
+  mimeType: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -38,6 +48,17 @@ export interface Project {
     | 'Technical Analysis'
     | 'Billing & Collection'
     | 'Archived';
+  documents?: ProjectDocument[];
+}
+
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  size: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  data: string;
+  mimeType: string;
 }
 
 export interface Task {
@@ -50,6 +71,8 @@ export interface Task {
   priority: 'Low' | 'Medium' | 'High';
   dueDate: string;
   completedDate?: string;
+  completionNote?: string;
+  attachments?: TaskAttachment[];
 }
 
 export interface Staff {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Plus,
   Search,
@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StaffPicker } from '@/components/StaffPicker';
-import type { Task, Project, Role, Staff as StaffType } from '@/types';
+import type { Task, Project, Role, Staff as StaffType, TaskAttachment } from '@/types';
 
 interface TasksProps {
   tasks: Task[];
@@ -47,6 +47,7 @@ interface TasksProps {
   onUpdateStatus: (taskId: string, status: Task['status']) => void;
   onAddTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
+  onProjectClick?: (projectId: string) => void;
   role?: Role;
   staffList?: StaffType[];
   currentUser?: import('@/types').User;
@@ -94,7 +95,7 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, role, staffList = [], currentUser }: TasksProps) {
+export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, onProjectClick, role, staffList = [], currentUser }: TasksProps) {
   const isStaff = role === 'Staff';
   const isAdmin = role === 'Admin';
   const isPMStaff = role === 'Project Manager' && currentUser?.jobPosition === 'PM Staff';
@@ -110,6 +111,48 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form, setForm] = useState(EMPTY_TASK_FORM);
+
+  const [completeDialogTask, setCompleteDialogTask] = useState<Task | null>(null);
+  const [completionNote, setCompletionNote] = useState('');
+  const [completionFile, setCompletionFile] = useState<File | null>(null);
+  const completionFileRef = useRef<HTMLInputElement>(null);
+
+  const handleCompleteSubmit = () => {
+    if (!completeDialogTask || !completionNote.trim()) return;
+    const submitCompletion = (attachment?: TaskAttachment) => {
+      onEditTask({
+        ...completeDialogTask,
+        status: 'Completed',
+        completedDate: new Date().toISOString().slice(0, 10),
+        completionNote: completionNote.trim(),
+        attachments: attachment
+          ? [...(completeDialogTask.attachments ?? []), attachment]
+          : completeDialogTask.attachments,
+      });
+      setCompleteDialogTask(null);
+      setCompletionNote('');
+      setCompletionFile(null);
+    };
+    if (completionFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const sizeKB = completionFile.size / 1024;
+        const sizeStr = sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${Math.round(sizeKB)} KB`;
+        submitCompletion({
+          id: `ATT-${Date.now()}`,
+          name: completionFile.name,
+          size: sizeStr,
+          uploadedBy: currentUser?.name ?? 'Unknown',
+          uploadedAt: new Date().toISOString().slice(0, 10),
+          data: reader.result as string,
+          mimeType: completionFile.type,
+        });
+      };
+      reader.readAsDataURL(completionFile);
+    } else {
+      submitCompletion();
+    }
+  };
 
   const setField = <K extends keyof typeof EMPTY_TASK_FORM>(key: K, value: (typeof EMPTY_TASK_FORM)[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -292,7 +335,7 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
           <Card key={task.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
-                {!isAdmin && (
+                {!isAdmin && !isStaff && (
                   <div className="pt-1">
                     <Checkbox
                       checked={task.status === 'Completed'}
@@ -309,23 +352,28 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
                         {task.title}
                       </h4>
                       <p className="text-sm text-slate-500 mt-1">{task.description}</p>
-                      <p className="text-xs text-blue-600 mt-1">{getProjectName(task.projectId)}</p>
+                      <button
+                        onClick={() => onProjectClick?.(task.projectId)}
+                        className="text-xs text-blue-600 mt-1 hover:underline text-left"
+                      >
+                        {getProjectName(task.projectId)} →
+                      </button>
                     </div>
                     {isAdmin ? null : isStaff ? (
-                      <Select
-                        value={task.status}
-                        onValueChange={(v) => onUpdateStatus(task.id, v as Task['status'])}
-                      >
-                        <SelectTrigger className="w-36 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="In Progress">In Progress</SelectItem>
-                          <SelectItem value="Completed">Completed</SelectItem>
-                          <SelectItem value="Overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {task.status !== 'Completed' && (
+                          <Button size="sm" variant="outline" className="text-xs h-8"
+                            onClick={() => onUpdateStatus(task.id, task.status === 'Pending' ? 'In Progress' : 'Pending')}>
+                            {task.status === 'Pending' ? 'Start' : 'Pause'}
+                          </Button>
+                        )}
+                        {task.status !== 'Completed' && (
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs h-8"
+                            onClick={() => { setCompleteDialogTask(task); setCompletionNote(''); setCompletionFile(null); }}>
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Complete
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -472,6 +520,48 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700">{editingTask ? 'Save Changes' : 'Create Task'}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Staff Task Completion Dialog */}
+      <input ref={completionFileRef} type="file" className="hidden" onChange={e => { setCompletionFile(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+      <Dialog open={!!completeDialogTask} onOpenChange={() => { setCompleteDialogTask(null); setCompletionNote(''); setCompletionFile(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submit Task Completion</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="font-medium text-slate-800 text-sm">{completeDialogTask?.title}</p>
+              <p className="text-xs text-blue-600 mt-0.5">{completeDialogTask ? getProjectName(completeDialogTask.projectId) : ''}</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Completion Note <span className="text-red-500">*</span></Label>
+              <Textarea
+                value={completionNote}
+                onChange={e => setCompletionNote(e.target.value)}
+                placeholder="Describe what was completed, findings, or results..."
+                rows={3}
+              />
+              <p className="text-xs text-slate-400">Required — describe what was done.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Attach Proof <span className="text-slate-400 font-normal">(optional)</span></Label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => completionFileRef.current?.click()}>
+                  {completionFile ? completionFile.name : 'Choose File'}
+                </Button>
+                {completionFile && <button onClick={() => setCompletionFile(null)} className="text-xs text-slate-400 hover:text-red-500">Remove</button>}
+              </div>
+              <p className="text-xs text-slate-400">Photo, field data sheet, report, etc.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCompleteDialogTask(null); setCompletionNote(''); setCompletionFile(null); }}>Cancel</Button>
+            <Button className="bg-green-600 hover:bg-green-700" disabled={!completionNote.trim()} onClick={handleCompleteSubmit}>
+              <CheckCircle2 className="w-4 h-4 mr-2" /> Submit & Complete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
