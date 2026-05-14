@@ -566,6 +566,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
               <Select value={assignPMUserId} onValueChange={setAssignPMUserId}>
                 <SelectTrigger><SelectValue placeholder="Select PM Staff" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__unassign__">— Unassign —</SelectItem>
                   {pmStaffUsers.map(u => (
                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                   ))}
@@ -580,11 +581,14 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
             <Button variant="outline" onClick={() => setAssignPMOpen(false)}>Cancel</Button>
             <Button
               className="bg-blue-600 hover:bg-blue-700"
-              disabled={!assignPMUserId}
+              disabled={assignPMUserId === ''}
               onClick={() => {
-                const user = pmStaffUsers.find(u => u.id === assignPMUserId);
-                if (assignPMProject && user) {
-                  onEditProject({ ...assignPMProject, assignedPMId: user.id, manager: user.name });
+                if (!assignPMProject) return;
+                if (assignPMUserId === '__unassign__') {
+                  onEditProject({ ...assignPMProject, assignedPMId: '', manager: '' });
+                } else {
+                  const user = pmStaffUsers.find(u => u.id === assignPMUserId);
+                  if (user) onEditProject({ ...assignPMProject, assignedPMId: user.id, manager: user.name });
                 }
                 setAssignPMOpen(false);
               }}
