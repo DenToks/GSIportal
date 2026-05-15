@@ -94,7 +94,7 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, onProjectClick, role, staffList = [], currentUser }: TasksProps) {
+export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, onProjectClick, role, currentUser }: TasksProps) {
   const isStaff = role === 'Staff';
   const isAdmin = role === 'Admin';
   const isPMStaff = role === 'Project Manager' && currentUser?.jobPosition === 'PM Staff';
