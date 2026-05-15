@@ -38,7 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { StaffPicker } from '@/components/StaffPicker';
 import type { Task, Project, Role, Staff as StaffType, TaskAttachment } from '@/types';
 
 interface TasksProps {
@@ -493,16 +492,6 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <StaffPicker
-                staffList={staffList}
-                selected={form.assignedTo}
-                onChange={names => setField('assignedTo', names)}
-                multiple
-                dropLabel="Drag staff here to assign (multiple allowed)"
-              />
             </div>
 
             <div className="space-y-1.5">
