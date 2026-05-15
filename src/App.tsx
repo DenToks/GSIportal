@@ -764,6 +764,8 @@ function App() {
               currentUser={currentUser}
               users={users}
               activityLogs={activityLogs}
+              vehicles={vehicles}
+              equipment={equipment}
             />
           )}
           {!isClient && currentView === 'approvals' && currentUser.role === 'Admin' && (

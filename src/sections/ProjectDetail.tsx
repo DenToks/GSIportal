@@ -11,6 +11,8 @@ import {
   Download,
   Edit,
   Clock,
+  Truck,
+  Wrench,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StaffPicker } from '@/components/StaffPicker';
-import type { Project, Task, Role, Staff as StaffType, User, ActivityLog, ProjectDocument, TaskAttachment } from '@/types';
+import type { Project, Task, Role, Staff as StaffType, User, ActivityLog, ProjectDocument, TaskAttachment, Vehicle, Equipment } from '@/types';
 
 interface ProjectDetailProps {
   project: Project;
@@ -60,6 +62,8 @@ interface ProjectDetailProps {
   currentUser?: User;
   users?: User[];
   activityLogs?: ActivityLog[];
+  vehicles?: Vehicle[];
+  equipment?: Equipment[];
 }
 
 const getStatusColor = (status: string) => {
@@ -104,7 +108,7 @@ const getPriorityColor = (priority: string) => {
 
 
 
-export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteProject, onRequestDeletion, onAddTask, onEditTask, onUpdateTaskStatus, role, jobPosition, staffList = [], currentUser: _currentUser, users = [], activityLogs = [] }: ProjectDetailProps) { // _currentUser used in upload handlers
+export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteProject, onRequestDeletion, onAddTask, onEditTask, onUpdateTaskStatus, role, jobPosition, staffList = [], currentUser: _currentUser, users = [], activityLogs = [], vehicles = [], equipment = [] }: ProjectDetailProps) { // _currentUser used in upload handlers
   const isStaff = role === 'Staff';
   const isSupervisor = role === 'Supervisor';
   const isBDSupervisor  = role === 'Project Manager' && jobPosition === 'BD Supervisor';
@@ -486,10 +490,11 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -695,6 +700,78 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               ))
             )}
           </div>
+        </TabsContent>
+
+        {/* Project Assets — vehicles and equipment deployed to this project */}
+        <TabsContent value="assets" className="space-y-4">
+          <h3 className="text-lg font-semibold">Deployed Assets</h3>
+          {(() => {
+            const deployedVehicles = vehicles.filter(v => v.assignedProjectId === project.id);
+            const deployedEquip    = equipment.filter(e => e.assignedProjectId === project.id);
+            if (deployedVehicles.length === 0 && deployedEquip.length === 0) {
+              return (
+                <div className="text-center py-12">
+                  <Truck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500">No vehicles or equipment deployed to this project yet.</p>
+                  <p className="text-xs text-slate-400 mt-1">Support Supervisor deploys assets from the Assets section.</p>
+                </div>
+              );
+            }
+            return (
+              <div className="space-y-4">
+                {deployedVehicles.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-slate-600 uppercase tracking-wide">Vehicles</p>
+                    {deployedVehicles.map(v => (
+                      <Card key={v.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                              <Truck className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-slate-800">{v.name}</p>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Deployed</span>
+                              </div>
+                              <p className="text-sm text-slate-500">{v.type} • {v.plateNumber}</p>
+                              {v.driver && <p className="text-sm text-slate-400 mt-0.5">Driver: {v.driver}</p>}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+                {deployedEquip.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-slate-600 uppercase tracking-wide">Equipment</p>
+                    {deployedEquip.map(e => (
+                      <Card key={e.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center shrink-0">
+                              <Wrench className="w-5 h-5 text-purple-600" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-slate-800">{e.name}</p>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Deployed</span>
+                              </div>
+                              <p className="text-sm text-slate-500">{e.type} • S/N: {e.serialNumber}</p>
+                              {e.lastCalibration && (
+                                <p className="text-xs text-slate-400 mt-0.5">Last calibration: {new Date(e.lastCalibration).toLocaleDateString()}</p>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </TabsContent>
 
         {/* Project Activity — read-only log filtered to this project */}
