@@ -609,9 +609,19 @@ function App() {
     pushLog('Added vehicle to inventory', vehicle.name);
   };
 
+  const handleEditVehicle = (updated: Vehicle) => {
+    setVehicles(prev => prev.map(v => v.id === updated.id ? updated : v));
+    pushLog('Updated vehicle details', updated.name);
+  };
+
   const handleAddEquipment = (equip: Equipment) => {
     setEquipment(prev => [equip, ...prev]);
     pushLog('Added equipment to inventory', equip.name);
+  };
+
+  const handleEditEquipment = (updated: Equipment) => {
+    setEquipment(prev => prev.map(e => e.id === updated.id ? updated : e));
+    pushLog('Updated equipment details', updated.name);
   };
 
   const handleSetVehicleMaintenance = (vehicleId: string) => {
@@ -797,7 +807,9 @@ function App() {
               onDeployEquipment={handleDeployEquipment}
               onReturnEquipment={handleReturnEquipment}
               onAddVehicle={handleAddVehicle}
+              onEditVehicle={handleEditVehicle}
               onAddEquipment={handleAddEquipment}
+              onEditEquipment={handleEditEquipment}
               onSetVehicleMaintenance={handleSetVehicleMaintenance}
               onSetEquipmentMaintenance={handleSetEquipmentMaintenance}
               onMarkVehicleAvailable={handleMarkVehicleAvailable}

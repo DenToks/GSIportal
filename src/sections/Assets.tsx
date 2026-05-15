@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, Wrench, CheckCircle2, AlertCircle, Clock, MapPin, Plus } from 'lucide-react';
+import { Truck, Wrench, CheckCircle2, AlertCircle, Clock, MapPin, Plus, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,9 @@ interface AssetsProps {
   onDeployEquipment: (equipmentId: string, projectId: string, projectName: string) => void;
   onReturnEquipment: (equipmentId: string) => void;
   onAddVehicle: (v: Vehicle) => void;
+  onEditVehicle: (v: Vehicle) => void;
   onAddEquipment: (e: Equipment) => void;
+  onEditEquipment: (e: Equipment) => void;
   onSetVehicleMaintenance: (vehicleId: string) => void;
   onSetEquipmentMaintenance: (equipId: string) => void;
   onMarkVehicleAvailable: (vehicleId: string) => void;
@@ -66,7 +68,7 @@ const getStatusIcon = (status: string) => {
 const EMPTY_VEHICLE = { name: '', type: 'Pickup' as Vehicle['type'], plateNumber: '', driver: '', lastService: '' };
 const EMPTY_EQUIP   = { name: '', type: '', serialNumber: '', lastCalibration: '' };
 
-export function Assets({ vehicles, equipment, projects, onDeployVehicle, onReturnVehicle, onDeployEquipment, onReturnEquipment, onAddVehicle, onAddEquipment, onSetVehicleMaintenance, onSetEquipmentMaintenance, onMarkVehicleAvailable, onMarkEquipmentAvailable }: AssetsProps) {
+export function Assets({ vehicles, equipment, projects, onDeployVehicle, onReturnVehicle, onDeployEquipment, onReturnEquipment, onAddVehicle, onEditVehicle, onAddEquipment, onEditEquipment, onSetVehicleMaintenance, onSetEquipmentMaintenance, onMarkVehicleAvailable, onMarkEquipmentAvailable }: AssetsProps) {
   const [deployVehicleTarget, setDeployVehicleTarget] = useState<Vehicle | null>(null);
   const [deployEquipTarget, setDeployEquipTarget]     = useState<Equipment | null>(null);
   const [selectedProjectId, setSelectedProjectId]     = useState('');
@@ -76,6 +78,36 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
 
   const [addEquipOpen, setAddEquipOpen] = useState(false);
   const [equipForm, setEquipForm]       = useState(EMPTY_EQUIP);
+
+  const [editVehicleTarget, setEditVehicleTarget] = useState<Vehicle | null>(null);
+  const [editVehicleForm, setEditVehicleForm]     = useState(EMPTY_VEHICLE);
+
+  const [editEquipTarget, setEditEquipTarget] = useState<Equipment | null>(null);
+  const [editEquipForm, setEditEquipForm]     = useState(EMPTY_EQUIP);
+
+  const openEditVehicle = (v: Vehicle) => {
+    setEditVehicleTarget(v);
+    setEditVehicleForm({ name: v.name, type: v.type, plateNumber: v.plateNumber, driver: v.driver ?? '', lastService: v.lastService ?? '' });
+  };
+
+  const openEditEquip = (e: Equipment) => {
+    setEditEquipTarget(e);
+    setEditEquipForm({ name: e.name, type: e.type, serialNumber: e.serialNumber, lastCalibration: e.lastCalibration ?? '' });
+  };
+
+  const handleEditVehicleSubmit = (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!editVehicleTarget || !editVehicleForm.name || !editVehicleForm.plateNumber) return;
+    onEditVehicle({ ...editVehicleTarget, name: editVehicleForm.name, type: editVehicleForm.type, plateNumber: editVehicleForm.plateNumber, driver: editVehicleForm.driver || undefined, lastService: editVehicleForm.lastService || undefined });
+    setEditVehicleTarget(null);
+  };
+
+  const handleEditEquipSubmit = (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!editEquipTarget || !editEquipForm.name || !editEquipForm.serialNumber) return;
+    onEditEquipment({ ...editEquipTarget, name: editEquipForm.name, type: editEquipForm.type, serialNumber: editEquipForm.serialNumber, lastCalibration: editEquipForm.lastCalibration || undefined });
+    setEditEquipTarget(null);
+  };
 
   const availableVehicles = vehicles.filter(v => v.status === 'Available').length;
   const deployedVehicles  = vehicles.filter(v => v.status === 'Deployed').length;
@@ -206,6 +238,11 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+                    {vehicle.status !== 'Deployed' && (
+                      <Button size="sm" variant="outline" onClick={() => openEditVehicle(vehicle)}>
+                        <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                      </Button>
+                    )}
                     {vehicle.status === 'Available' && (
                       <>
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setDeployVehicleTarget(vehicle); setSelectedProjectId(''); }}>
@@ -272,6 +309,11 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+                    {equip.status !== 'Deployed' && (
+                      <Button size="sm" variant="outline" onClick={() => openEditEquip(equip)}>
+                        <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                      </Button>
+                    )}
                     {equip.status === 'Available' && (
                       <>
                         <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => { setDeployEquipTarget(equip); setSelectedProjectId(''); }}>
@@ -418,6 +460,79 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAddEquipOpen(false)}>Cancel</Button>
               <Button type="submit" className="bg-purple-600 hover:bg-purple-700">Add Equipment</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Vehicle Dialog */}
+      <Dialog open={!!editVehicleTarget} onOpenChange={() => setEditVehicleTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit Vehicle</DialogTitle></DialogHeader>
+          <form onSubmit={handleEditVehicleSubmit} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2">
+                <Label>Vehicle Name *</Label>
+                <Input value={editVehicleForm.name} onChange={e => setEditVehicleForm(p => ({ ...p, name: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Type *</Label>
+                <Select value={editVehicleForm.type} onValueChange={v => setEditVehicleForm(p => ({ ...p, type: v as Vehicle['type'] }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['Truck','Van','SUV','Pickup','Heavy Equipment','Motorcycle'].map(t => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Plate Number *</Label>
+                <Input value={editVehicleForm.plateNumber} onChange={e => setEditVehicleForm(p => ({ ...p, plateNumber: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Driver</Label>
+                <Input placeholder="Driver name" value={editVehicleForm.driver} onChange={e => setEditVehicleForm(p => ({ ...p, driver: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Last Service Date</Label>
+                <Input type="date" value={editVehicleForm.lastService} onChange={e => setEditVehicleForm(p => ({ ...p, lastService: e.target.value }))} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditVehicleTarget(null)}>Cancel</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Equipment Dialog */}
+      <Dialog open={!!editEquipTarget} onOpenChange={() => setEditEquipTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit Equipment</DialogTitle></DialogHeader>
+          <form onSubmit={handleEditEquipSubmit} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2">
+                <Label>Equipment Name *</Label>
+                <Input value={editEquipForm.name} onChange={e => setEditEquipForm(p => ({ ...p, name: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Type *</Label>
+                <Input value={editEquipForm.type} onChange={e => setEditEquipForm(p => ({ ...p, type: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Serial Number *</Label>
+                <Input value={editEquipForm.serialNumber} onChange={e => setEditEquipForm(p => ({ ...p, serialNumber: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label>Last Calibration Date</Label>
+                <Input type="date" value={editEquipForm.lastCalibration} onChange={e => setEditEquipForm(p => ({ ...p, lastCalibration: e.target.value }))} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditEquipTarget(null)}>Cancel</Button>
+              <Button type="submit" className="bg-purple-600 hover:bg-purple-700">Save Changes</Button>
             </DialogFooter>
           </form>
         </DialogContent>
