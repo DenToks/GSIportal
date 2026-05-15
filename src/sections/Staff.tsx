@@ -573,7 +573,7 @@ export function Staff({
                           Manage Role
                         </Button>
                       )}
-                      {(currentUser.role === 'Supervisor' || (currentUser.role === 'Project Manager' && currentUser.jobPosition === 'PM Supervisor')) && (
+                      {((currentUser.role === 'Supervisor' && currentUser.jobPosition === 'TI Supervisor') || (currentUser.role === 'Project Manager' && currentUser.jobPosition === 'PM Supervisor')) && (
                         <Button
                           variant={currentUser.role === 'Supervisor' ? 'default' : 'outline'}
                           size="sm"

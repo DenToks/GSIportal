@@ -106,7 +106,7 @@ function buildMenu(
         { id: 'dashboard',      label: 'Dashboard',        icon: LayoutDashboard },
         { id: 'projects',       label: 'Projects',         icon: FolderKanban },
         { id: 'assets',         label: 'Assets',           icon: Truck },
-        { id: 'staff',          label: 'Staff Assignment', icon: Users },
+        { id: 'staff',          label: 'Staff Pool',       icon: Users },
         { id: 'leave-requests', label: 'Leave Requests',   icon: CalendarOff, badge: pendingLeaveCount },
         { id: 'reports',        label: 'Reports',          icon: FileBarChart },
       ];
