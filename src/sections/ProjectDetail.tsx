@@ -110,7 +110,7 @@ const getPriorityColor = (priority: string) => {
 
 export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteProject, onRequestDeletion, onAddTask, onEditTask, onUpdateTaskStatus, role, jobPosition, staffList = [], currentUser: _currentUser, users = [], activityLogs = [], vehicles = [], equipment = [] }: ProjectDetailProps) { // _currentUser used in upload handlers
   const isStaff = role === 'Staff';
-  const isSupervisor = role === 'Supervisor';
+  const isSupervisor = role === 'Supervisor' && jobPosition === 'TI Supervisor';
   const isBDSupervisor  = role === 'Project Manager' && jobPosition === 'BD Supervisor';
   const isPMSupervisor  = role === 'Project Manager' && jobPosition === 'PM Supervisor';
   const isAdmin = role === 'Admin';
