@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Truck, Wrench, CheckCircle2, AlertCircle, Clock, MapPin } from 'lucide-react';
+import { Truck, Wrench, CheckCircle2, AlertCircle, Clock, MapPin, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -18,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import type { Vehicle, Equipment, Project, User } from '@/types';
 
 interface AssetsProps {
@@ -30,23 +31,29 @@ interface AssetsProps {
   onReturnVehicle: (vehicleId: string) => void;
   onDeployEquipment: (equipmentId: string, projectId: string, projectName: string) => void;
   onReturnEquipment: (equipmentId: string) => void;
+  onAddVehicle: (v: Vehicle) => void;
+  onAddEquipment: (e: Equipment) => void;
+  onSetVehicleMaintenance: (vehicleId: string) => void;
+  onSetEquipmentMaintenance: (equipId: string) => void;
+  onMarkVehicleAvailable: (vehicleId: string) => void;
+  onMarkEquipmentAvailable: (equipId: string) => void;
 }
 
 const getVehicleStatusColor = (status: string) => {
   switch (status) {
-    case 'Available':    return 'bg-green-100 text-green-700 border-green-200';
-    case 'Deployed':     return 'bg-blue-100 text-blue-700 border-blue-200';
-    case 'Maintenance':  return 'bg-amber-100 text-amber-700 border-amber-200';
-    default:             return 'bg-gray-100 text-gray-700';
+    case 'Available':   return 'bg-green-100 text-green-700 border-green-200';
+    case 'Deployed':    return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'Maintenance': return 'bg-amber-100 text-amber-700 border-amber-200';
+    default:            return 'bg-gray-100 text-gray-700';
   }
 };
 
 const getEquipmentStatusColor = (status: string) => {
   switch (status) {
-    case 'Available':        return 'bg-green-100 text-green-700 border-green-200';
-    case 'Deployed':         return 'bg-blue-100 text-blue-700 border-blue-200';
-    case 'Under Maintenance':return 'bg-amber-100 text-amber-700 border-amber-200';
-    default:                 return 'bg-gray-100 text-gray-700';
+    case 'Available':         return 'bg-green-100 text-green-700 border-green-200';
+    case 'Deployed':          return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'Under Maintenance': return 'bg-amber-100 text-amber-700 border-amber-200';
+    default:                  return 'bg-gray-100 text-gray-700';
   }
 };
 
@@ -56,10 +63,19 @@ const getStatusIcon = (status: string) => {
   return <AlertCircle className="w-3.5 h-3.5" />;
 };
 
-export function Assets({ vehicles, equipment, projects, onDeployVehicle, onReturnVehicle, onDeployEquipment, onReturnEquipment }: AssetsProps) {
+const EMPTY_VEHICLE = { name: '', type: 'Pickup' as Vehicle['type'], plateNumber: '', driver: '', lastService: '' };
+const EMPTY_EQUIP   = { name: '', type: '', serialNumber: '', lastCalibration: '' };
+
+export function Assets({ vehicles, equipment, projects, onDeployVehicle, onReturnVehicle, onDeployEquipment, onReturnEquipment, onAddVehicle, onAddEquipment, onSetVehicleMaintenance, onSetEquipmentMaintenance, onMarkVehicleAvailable, onMarkEquipmentAvailable }: AssetsProps) {
   const [deployVehicleTarget, setDeployVehicleTarget] = useState<Vehicle | null>(null);
-  const [deployEquipTarget, setDeployEquipTarget] = useState<Equipment | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [deployEquipTarget, setDeployEquipTarget]     = useState<Equipment | null>(null);
+  const [selectedProjectId, setSelectedProjectId]     = useState('');
+
+  const [addVehicleOpen, setAddVehicleOpen] = useState(false);
+  const [vehicleForm, setVehicleForm]       = useState(EMPTY_VEHICLE);
+
+  const [addEquipOpen, setAddEquipOpen] = useState(false);
+  const [equipForm, setEquipForm]       = useState(EMPTY_EQUIP);
 
   const availableVehicles = vehicles.filter(v => v.status === 'Available').length;
   const deployedVehicles  = vehicles.filter(v => v.status === 'Deployed').length;
@@ -68,9 +84,7 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
   const handleDeployVehicle = () => {
     if (!deployVehicleTarget || !selectedProjectId) return;
     const project = projects.find(p => p.id === selectedProjectId);
-    if (project) {
-      onDeployVehicle(deployVehicleTarget.id, selectedProjectId, project.name);
-    }
+    if (project) onDeployVehicle(deployVehicleTarget.id, selectedProjectId, project.name);
     setDeployVehicleTarget(null);
     setSelectedProjectId('');
   };
@@ -78,12 +92,43 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
   const handleDeployEquip = () => {
     if (!deployEquipTarget || !selectedProjectId) return;
     const project = projects.find(p => p.id === selectedProjectId);
-    if (project) {
-      onDeployEquipment(deployEquipTarget.id, selectedProjectId, project.name);
-    }
+    if (project) onDeployEquipment(deployEquipTarget.id, selectedProjectId, project.name);
     setDeployEquipTarget(null);
     setSelectedProjectId('');
   };
+
+  const handleAddVehicleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vehicleForm.name || !vehicleForm.plateNumber) return;
+    onAddVehicle({
+      id: `VEH-${Date.now()}`,
+      name: vehicleForm.name,
+      type: vehicleForm.type,
+      plateNumber: vehicleForm.plateNumber,
+      status: 'Available',
+      driver: vehicleForm.driver || undefined,
+      lastService: vehicleForm.lastService || undefined,
+    });
+    setVehicleForm(EMPTY_VEHICLE);
+    setAddVehicleOpen(false);
+  };
+
+  const handleAddEquipSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!equipForm.name || !equipForm.serialNumber) return;
+    onAddEquipment({
+      id: `EQP-${Date.now()}`,
+      name: equipForm.name,
+      type: equipForm.type,
+      serialNumber: equipForm.serialNumber,
+      status: 'Available',
+      lastCalibration: equipForm.lastCalibration || undefined,
+    });
+    setEquipForm(EMPTY_EQUIP);
+    setAddEquipOpen(false);
+  };
+
+  const activeProjects = projects.filter(p => p.status === 'Ongoing' || p.status === 'Pending');
 
   return (
     <div className="space-y-6">
@@ -120,6 +165,14 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
 
         {/* Vehicles Tab */}
         <TabsContent value="vehicles" className="space-y-3 mt-4">
+          <div className="flex justify-end">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => setAddVehicleOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" /> Add Vehicle
+            </Button>
+          </div>
+          {vehicles.length === 0 && (
+            <div className="text-center py-12 text-slate-400">No vehicles in inventory yet.</div>
+          )}
           {vehicles.map(vehicle => (
             <Card key={vehicle.id}>
               <CardContent className="p-5">
@@ -136,6 +189,9 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                         </Badge>
                       </div>
                       <p className="text-sm text-slate-500">{vehicle.type} • {vehicle.plateNumber}</p>
+                      {vehicle.driver && !vehicle.assignedProjectName && (
+                        <p className="text-sm text-slate-400 mt-0.5">Driver: {vehicle.driver}</p>
+                      )}
                       {vehicle.assignedProjectName && (
                         <p className="text-sm text-blue-600 mt-0.5 flex items-center gap-1">
                           <MapPin className="w-3 h-3" /> {vehicle.assignedProjectName}
@@ -149,15 +205,25 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                     {vehicle.status === 'Available' && (
-                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setDeployVehicleTarget(vehicle); setSelectedProjectId(''); }}>
-                        Deploy
-                      </Button>
+                      <>
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setDeployVehicleTarget(vehicle); setSelectedProjectId(''); }}>
+                          Deploy
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => onSetVehicleMaintenance(vehicle.id)}>
+                          Set Maintenance
+                        </Button>
+                      </>
                     )}
                     {vehicle.status === 'Deployed' && (
                       <Button size="sm" variant="outline" onClick={() => onReturnVehicle(vehicle.id)}>
                         Return
+                      </Button>
+                    )}
+                    {vehicle.status === 'Maintenance' && (
+                      <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => onMarkVehicleAvailable(vehicle.id)}>
+                        Mark Available
                       </Button>
                     )}
                   </div>
@@ -169,6 +235,14 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
 
         {/* Equipment Tab */}
         <TabsContent value="equipment" className="space-y-3 mt-4">
+          <div className="flex justify-end">
+            <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => setAddEquipOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" /> Add Equipment
+            </Button>
+          </div>
+          {equipment.length === 0 && (
+            <div className="text-center py-12 text-slate-400">No equipment in inventory yet.</div>
+          )}
           {equipment.map(equip => (
             <Card key={equip.id}>
               <CardContent className="p-5">
@@ -197,15 +271,25 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                     {equip.status === 'Available' && (
-                      <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => { setDeployEquipTarget(equip); setSelectedProjectId(''); }}>
-                        Deploy
-                      </Button>
+                      <>
+                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => { setDeployEquipTarget(equip); setSelectedProjectId(''); }}>
+                          Deploy
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => onSetEquipmentMaintenance(equip.id)}>
+                          Set Maintenance
+                        </Button>
+                      </>
                     )}
                     {equip.status === 'Deployed' && (
                       <Button size="sm" variant="outline" onClick={() => onReturnEquipment(equip.id)}>
                         Return
+                      </Button>
+                    )}
+                    {equip.status === 'Under Maintenance' && (
+                      <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => onMarkEquipmentAvailable(equip.id)}>
+                        Mark Available
                       </Button>
                     )}
                   </div>
@@ -219,19 +303,15 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
       {/* Deploy Vehicle Dialog */}
       <Dialog open={!!deployVehicleTarget} onOpenChange={() => setDeployVehicleTarget(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Deploy Vehicle</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Deploy Vehicle</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-sm text-slate-600">
-              Deploying: <span className="font-medium">{deployVehicleTarget?.name}</span>
-            </p>
+            <p className="text-sm text-slate-600">Deploying: <span className="font-medium">{deployVehicleTarget?.name}</span></p>
             <div className="space-y-1.5">
               <Label>Assign to Project</Label>
               <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                 <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent>
-                  {projects.filter(p => p.status === 'Ongoing' || p.status === 'Pending').map(p => (
+                  {activeProjects.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -240,9 +320,7 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeployVehicleTarget(null)}>Cancel</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleDeployVehicle} disabled={!selectedProjectId}>
-              Confirm Deploy
-            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleDeployVehicle} disabled={!selectedProjectId}>Confirm Deploy</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -250,19 +328,15 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
       {/* Deploy Equipment Dialog */}
       <Dialog open={!!deployEquipTarget} onOpenChange={() => setDeployEquipTarget(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Deploy Equipment</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Deploy Equipment</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-sm text-slate-600">
-              Deploying: <span className="font-medium">{deployEquipTarget?.name}</span>
-            </p>
+            <p className="text-sm text-slate-600">Deploying: <span className="font-medium">{deployEquipTarget?.name}</span></p>
             <div className="space-y-1.5">
               <Label>Assign to Project</Label>
               <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                 <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent>
-                  {projects.filter(p => p.status === 'Ongoing' || p.status === 'Pending').map(p => (
+                  {activeProjects.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -271,10 +345,81 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeployEquipTarget(null)}>Cancel</Button>
-            <Button className="bg-purple-600 hover:bg-purple-700" onClick={handleDeployEquip} disabled={!selectedProjectId}>
-              Confirm Deploy
-            </Button>
+            <Button className="bg-purple-600 hover:bg-purple-700" onClick={handleDeployEquip} disabled={!selectedProjectId}>Confirm Deploy</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Vehicle Dialog */}
+      <Dialog open={addVehicleOpen} onOpenChange={setAddVehicleOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Add Vehicle</DialogTitle></DialogHeader>
+          <form onSubmit={handleAddVehicleSubmit} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2">
+                <Label>Vehicle Name *</Label>
+                <Input placeholder="e.g. Isuzu D-Max" value={vehicleForm.name} onChange={e => setVehicleForm(p => ({ ...p, name: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Type *</Label>
+                <Select value={vehicleForm.type} onValueChange={v => setVehicleForm(p => ({ ...p, type: v as Vehicle['type'] }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['Truck','Van','SUV','Pickup','Heavy Equipment','Motorcycle'].map(t => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Plate Number *</Label>
+                <Input placeholder="e.g. ABC 1234" value={vehicleForm.plateNumber} onChange={e => setVehicleForm(p => ({ ...p, plateNumber: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Driver (optional)</Label>
+                <Input placeholder="Driver name" value={vehicleForm.driver} onChange={e => setVehicleForm(p => ({ ...p, driver: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Last Service Date</Label>
+                <Input type="date" value={vehicleForm.lastService} onChange={e => setVehicleForm(p => ({ ...p, lastService: e.target.value }))} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddVehicleOpen(false)}>Cancel</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Add Vehicle</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Equipment Dialog */}
+      <Dialog open={addEquipOpen} onOpenChange={setAddEquipOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Add Equipment</DialogTitle></DialogHeader>
+          <form onSubmit={handleAddEquipSubmit} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2">
+                <Label>Equipment Name *</Label>
+                <Input placeholder="e.g. Boring Machine #3" value={equipForm.name} onChange={e => setEquipForm(p => ({ ...p, name: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Type *</Label>
+                <Input placeholder="e.g. Drilling Equipment" value={equipForm.type} onChange={e => setEquipForm(p => ({ ...p, type: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Serial Number *</Label>
+                <Input placeholder="e.g. BM-2024-003" value={equipForm.serialNumber} onChange={e => setEquipForm(p => ({ ...p, serialNumber: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label>Last Calibration Date</Label>
+                <Input type="date" value={equipForm.lastCalibration} onChange={e => setEquipForm(p => ({ ...p, lastCalibration: e.target.value }))} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddEquipOpen(false)}>Cancel</Button>
+              <Button type="submit" className="bg-purple-600 hover:bg-purple-700">Add Equipment</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

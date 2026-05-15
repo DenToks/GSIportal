@@ -604,6 +604,40 @@ function App() {
     if (e?.assignedProjectName) pushLog('Returned equipment from project', e.assignedProjectName);
   };
 
+  const handleAddVehicle = (vehicle: Vehicle) => {
+    setVehicles(prev => [vehicle, ...prev]);
+    pushLog('Added vehicle to inventory', vehicle.name);
+  };
+
+  const handleAddEquipment = (equip: Equipment) => {
+    setEquipment(prev => [equip, ...prev]);
+    pushLog('Added equipment to inventory', equip.name);
+  };
+
+  const handleSetVehicleMaintenance = (vehicleId: string) => {
+    const v = vehicles.find(v => v.id === vehicleId);
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, status: 'Maintenance' } : v));
+    if (v) pushLog('Set vehicle for maintenance', v.name);
+  };
+
+  const handleSetEquipmentMaintenance = (equipId: string) => {
+    const e = equipment.find(e => e.id === equipId);
+    setEquipment(prev => prev.map(e => e.id === equipId ? { ...e, status: 'Under Maintenance' } : e));
+    if (e) pushLog('Set equipment for maintenance', e.name);
+  };
+
+  const handleMarkVehicleAvailable = (vehicleId: string) => {
+    const v = vehicles.find(v => v.id === vehicleId);
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, status: 'Available' } : v));
+    if (v) pushLog('Marked vehicle as available', v.name);
+  };
+
+  const handleMarkEquipmentAvailable = (equipId: string) => {
+    const e = equipment.find(e => e.id === equipId);
+    setEquipment(prev => prev.map(e => e.id === equipId ? { ...e, status: 'Available' } : e));
+    if (e) pushLog('Marked equipment as available', e.name);
+  };
+
   // --- Derived counts -------------------------------------------------------
   const visibleNotifications = useMemo(() => {
     if (!currentUser) return [];
@@ -760,6 +794,12 @@ function App() {
               onReturnVehicle={handleReturnVehicle}
               onDeployEquipment={handleDeployEquipment}
               onReturnEquipment={handleReturnEquipment}
+              onAddVehicle={handleAddVehicle}
+              onAddEquipment={handleAddEquipment}
+              onSetVehicleMaintenance={handleSetVehicleMaintenance}
+              onSetEquipmentMaintenance={handleSetEquipmentMaintenance}
+              onMarkVehicleAvailable={handleMarkVehicleAvailable}
+              onMarkEquipmentAvailable={handleMarkEquipmentAvailable}
             />
           )}
           {!isClient && currentView === 'schedule' && currentUser.role === 'Staff' && (

@@ -470,10 +470,23 @@ export const clientDocuments: ClientDocument[] = [];
 export const leaveRequests: LeaveRequest[] = [];
 
 // --- Vehicles ---------------------------------------------------------------
-export const vehicles: Vehicle[] = [];
+export const vehicles: Vehicle[] = [
+  { id: 'VEH-001', name: 'Isuzu D-Max', type: 'Pickup', plateNumber: 'ABC 1234', status: 'Available', driver: 'Eduardo Cruz', lastService: '2025-04-10' },
+  { id: 'VEH-002', name: 'Toyota Hilux', type: 'Pickup', plateNumber: 'DEF 5678', status: 'Available', driver: 'Marco Reyes', lastService: '2025-03-22' },
+  { id: 'VEH-003', name: 'L300 Van', type: 'Van', plateNumber: 'GHI 9012', status: 'Available', lastService: '2025-02-15' },
+  { id: 'VEH-004', name: 'Isuzu Elf Truck', type: 'Truck', plateNumber: 'JKL 3456', status: 'Available', lastService: '2025-01-30' },
+  { id: 'VEH-005', name: 'Honda XRM', type: 'Motorcycle', plateNumber: 'MNO 7890', status: 'Maintenance', lastService: '2025-04-01' },
+];
 
 // --- Equipment --------------------------------------------------------------
-export const equipment: Equipment[] = [];
+export const equipment: Equipment[] = [
+  { id: 'EQP-001', name: 'Boring Machine #1', type: 'Drilling Equipment', serialNumber: 'BM-2021-001', status: 'Available', lastCalibration: '2025-04-05' },
+  { id: 'EQP-002', name: 'Boring Machine #2', type: 'Drilling Equipment', serialNumber: 'BM-2021-002', status: 'Available', lastCalibration: '2025-04-05' },
+  { id: 'EQP-003', name: 'SPT Equipment Set', type: 'Field Testing', serialNumber: 'SPT-2020-001', status: 'Available', lastCalibration: '2025-03-15' },
+  { id: 'EQP-004', name: 'Nuclear Densometer', type: 'Testing Instrument', serialNumber: 'ND-2019-001', status: 'Available', lastCalibration: '2025-02-28' },
+  { id: 'EQP-005', name: 'Total Station GPS', type: 'Survey Equipment', serialNumber: 'GPS-2022-001', status: 'Available', lastCalibration: '2025-03-01' },
+  { id: 'EQP-006', name: 'Triaxial Test Machine', type: 'Laboratory Equipment', serialNumber: 'TTM-2020-001', status: 'Under Maintenance', lastCalibration: '2025-01-10' },
+];
 
 // --- Activity logs ----------------------------------------------------------
 export const activityLogs: ActivityLog[] = [];
