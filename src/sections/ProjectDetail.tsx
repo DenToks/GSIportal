@@ -397,7 +397,7 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               Assign PM Staff
             </Button>
           )}
-          {(isPMSupervisor || isBDSupervisor) && (
+          {isBDSupervisor && (
             <Button variant="outline" onClick={openEdit}>
               <Edit className="w-4 h-4 mr-2" />
               Edit Project
