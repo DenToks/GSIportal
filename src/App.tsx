@@ -785,7 +785,7 @@ function App() {
             <ActivityLogs logs={activityLogs} />
           )}
           {!isClient && currentView === 'system-settings' && currentUser.role === 'Admin' && (
-            <SystemSettings currentUser={currentUser} onExportState={exportState} onImportState={importState} onRunDemo={runDemoPlayback} demoRunning={demoRunning} />
+            <SystemSettings currentUser={currentUser} />
           )}
           {!isClient && currentView === 'leave-requests' && currentUser.role === 'Supervisor' && (
             <LeaveRequests leaveRequests={leaveRequests} currentUser={currentUser} onResolve={handleResolveLeaveRequest} onMarkReturned={handleMarkLeaveReturned} />

@@ -8,13 +8,9 @@ import type { User } from '@/types';
 
 interface SystemSettingsProps {
   currentUser: User;
-  onExportState?: () => void;
-  onImportState?: (obj: any) => void;
-  onRunDemo?: () => void;
-  demoRunning?: boolean;
 }
 
-export function SystemSettings({ currentUser, onExportState, onImportState, onRunDemo, demoRunning }: SystemSettingsProps) {
+export function SystemSettings({ currentUser }: SystemSettingsProps) {
   const [settings, setSettings] = useState({
     auditAllRoleChanges: true,
     requireApprovalForRoleChanges: true,
@@ -139,35 +135,6 @@ export function SystemSettings({ currentUser, onExportState, onImportState, onRu
               <Save className="w-4 h-4 mr-2" />
               Save Settings
             </Button>
-            <div className="mt-4 space-y-2">
-              <p className="text-sm text-slate-500">Demo state</p>
-              <div className="flex gap-2">
-                <input id="import-file" type="file" accept="application/json" className="hidden" />
-                <Button className="bg-slate-100 text-slate-700" onClick={() => {
-                  const el = document.getElementById('import-file') as HTMLInputElement | null;
-                  if (!el) return;
-                  el.onchange = async () => {
-                    const f = el.files?.[0];
-                    if (!f) return;
-                    try {
-                      const txt = await f.text();
-                      const obj = JSON.parse(txt);
-                      onImportState && onImportState(obj);
-                    } catch (e) { alert('Invalid JSON'); }
-                    el.value = '';
-                  };
-                  el.click();
-                }}>
-                  Import JSON
-                </Button>
-                <Button className="bg-slate-100 text-slate-700" onClick={() => { onExportState && onExportState(); }}>
-                  Export JSON
-                </Button>
-                <Button className={` ${demoRunning ? 'bg-amber-300 text-slate-800' : 'bg-amber-500 text-white'}`} onClick={() => { onRunDemo && onRunDemo(); }}>
-                  {demoRunning ? 'Demo Running…' : 'Run Demo Playback'}
-                </Button>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
