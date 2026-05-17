@@ -147,7 +147,7 @@ export function Login({ onLogin }: LoginProps) {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@geoinnovative.ph"
+                  placeholder="you@geoinnovative.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-9 border-slate-200 focus:border-blue-500 h-11"

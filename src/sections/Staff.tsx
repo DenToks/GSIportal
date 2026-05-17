@@ -870,7 +870,7 @@ export function Staff({
                 type="email"
                 value={staffForm.email}
                 onChange={e => setStaffField('email', e.target.value)}
-                placeholder="e.g. juan@geoinnovative.ph"
+                placeholder="e.g. juan@geoinnovative.com"
                 required
               />
             </div>
