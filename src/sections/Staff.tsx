@@ -66,6 +66,7 @@ interface StaffProps {
   onAssignProject: (staffId: string, projectId: string) => void;
   onAddStaff: (member: StaffType) => void;
   onAddUser: (user: User) => void;
+  onUpdateStaff: (staffId: string, updates: Partial<StaffType>) => void;
 }
 
 const EMPTY_STAFF_FORM = {
@@ -160,6 +161,7 @@ export function Staff({
   onAssignProject,
   onAddStaff,
   onAddUser,
+  onUpdateStaff,
 }: StaffProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -188,6 +190,10 @@ export function Staff({
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailStaffId, setDetailStaffId] = useState<string>('');
   const [detailStaffName, setDetailStaffName] = useState<string>('');
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<StaffType | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', department: '', systemRole: 'Staff', jobPosition: '' });
 
   const isAdminAccount = (member: StaffType) => {
     const matchedUser = users.find(
@@ -385,6 +391,43 @@ export function Staff({
     setDetailDialogOpen(true);
   };
 
+  const openEditDetails = (member: StaffType) => {
+    const u = matchUser(member);
+    setEditTarget(member);
+    setEditForm({
+      name: member.name,
+      email: member.email,
+      phone: member.phone ?? '',
+      department: member.department ?? '',
+      systemRole: u ? getRoleFamilyFromLabel(u.jobPosition ?? u.role) : (member.systemRole ?? 'Staff'),
+      jobPosition: u?.jobPosition ?? member.systemRole ?? '',
+    });
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editTarget) return;
+    const u = matchUser(editTarget);
+    const initials = editForm.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const nextLabel = editForm.jobPosition || (editForm.systemRole === 'Admin' ? 'Administrator' : editForm.systemRole);
+    onUpdateStaff(editTarget.id, {
+      name: editForm.name,
+      email: editForm.email,
+      phone: editForm.phone,
+      department: editForm.department,
+      systemRole: nextLabel,
+      role: nextLabel,
+      avatar: initials,
+    });
+    if (u) {
+      onDirectRoleChange(u.id, editForm.systemRole as Role);
+      onUpdateUserJobPosition(u.id, nextLabel);
+    }
+    onUpdateStaffSystemRole(editTarget.id, nextLabel);
+    setEditOpen(false);
+    setEditTarget(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -571,16 +614,6 @@ export function Staff({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {currentUser.role === 'Admin' && !isAdminAccount(member) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openRoleDialog(member, 'manage')}
-                        >
-                          <UserCog className="w-4 h-4 mr-1" />
-                          Manage Role
-                        </Button>
-                      )}
                       {((currentUser.role === 'Supervisor' && currentUser.jobPosition === 'TI Supervisor') || (currentUser.role === 'Project Manager' && currentUser.jobPosition === 'PM Supervisor')) && (
                         <Button
                           variant={currentUser.role === 'Supervisor' ? 'default' : 'outline'}
@@ -609,8 +642,9 @@ export function Staff({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Profile</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Details</DropdownMenuItem>
+                          {currentUser.role === 'Admin' && !isAdminAccount(member) && (
+                            <DropdownMenuItem onClick={() => openEditDetails(member)}>Edit Details</DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => openDetailDialog(member)}>View Assignments</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -906,6 +940,65 @@ export function Staff({
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Review & Create</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Details Dialog */}
+      <Dialog open={editOpen} onOpenChange={open => { if (!open) { setEditOpen(false); setEditTarget(null); } }}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Edit Account Details</DialogTitle>
+            <DialogDescription>Update this staff member's information and role.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2">
+                <Label>Full Name</Label>
+                <Input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label>Email</Label>
+                <Input type="email" value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} placeholder="email@geoinnovative.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Phone</Label>
+                <Input value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} placeholder="+63 9XX XXX XXXX" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Department</Label>
+                <Input value={editForm.department} onChange={e => setEditForm(p => ({ ...p, department: e.target.value }))} placeholder="e.g. Engineering" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>System Role</Label>
+              <Select value={editForm.systemRole} onValueChange={v => setEditForm(p => ({ ...p, systemRole: v, jobPosition: JOB_POSITIONS[v]?.[0] ?? '' }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Project Manager">Project Manager</SelectItem>
+                  <SelectItem value="Supervisor">Supervisor</SelectItem>
+                  <SelectItem value="Staff">Staff</SelectItem>
+                  <SelectItem value="Client">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {JOB_POSITIONS[editForm.systemRole] && (
+              <div className="space-y-1.5">
+                <Label>Job Position</Label>
+                <Select value={editForm.jobPosition} onValueChange={v => setEditForm(p => ({ ...p, jobPosition: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select position" /></SelectTrigger>
+                  <SelectContent>
+                    {JOB_POSITIONS[editForm.systemRole].map(pos => (
+                      <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSaveEdit}>Save Changes</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -752,6 +752,7 @@ function App() {
               projects={projects}
               onAddStaff={handleAddStaff}
               onAddUser={handleAddUser}
+              onUpdateStaff={(staffId, updates) => setStaffList(prev => prev.map(s => s.id === staffId ? { ...s, ...updates } : s))}
             />
           )}
           {!isClient && currentView === 'reports' && (
