@@ -56,7 +56,7 @@ import type {
 // Re-export View so other files can still import it from App if needed
 export type { View };
 
-const STORAGE_VERSION = 'v2';
+const STORAGE_VERSION = 'v3';
 const storageKey = (name: string) => `gsi_${STORAGE_VERSION}_${name}`;
 
 function App() {
