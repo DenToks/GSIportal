@@ -23,6 +23,8 @@ export interface ProjectDocument {
   uploadedAt: string;
   data: string;
   mimeType: string;
+  category?: string;
+  description?: string;
 }
 
 export interface Project {

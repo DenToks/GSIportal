@@ -163,29 +163,54 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
     : staffList;
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadDocOpen, setUploadDocOpen] = useState(false);
+  const [uploadDocFile, setUploadDocFile] = useState<File | null>(null);
+  const [uploadDocName, setUploadDocName] = useState('');
+  const [uploadDocCategory, setUploadDocCategory] = useState('');
+  const [uploadDocDescription, setUploadDocDescription] = useState('');
 
-  const handleUploadClick = () => fileInputRef.current?.click();
+  const handleUploadClick = () => {
+    setUploadDocFile(null);
+    setUploadDocName('');
+    setUploadDocCategory('');
+    setUploadDocDescription('');
+    setUploadDocOpen(true);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploadDocFile(file);
+    setUploadDocName(file.name.replace(/\.[^/.]+$/, ''));
+    e.target.value = '';
+  };
+
+  const handleUploadSubmit = () => {
+    if (!uploadDocFile || !uploadDocName.trim()) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const sizeKB = file.size / 1024;
+      const sizeKB = uploadDocFile.size / 1024;
       const sizeStr = sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${Math.round(sizeKB)} KB`;
+      const ext = uploadDocFile.name.split('.').pop() ?? '';
       const doc: ProjectDocument = {
         id: `DOC-${Date.now()}`,
-        name: file.name,
+        name: uploadDocName.trim() + (ext ? `.${ext}` : ''),
         size: sizeStr,
         uploadedBy: _currentUser?.name ?? 'Unknown',
         uploadedAt: new Date().toISOString().slice(0, 10),
         data: reader.result as string,
-        mimeType: file.type,
+        mimeType: uploadDocFile.type,
+        category: uploadDocCategory || undefined,
+        description: uploadDocDescription.trim() || undefined,
       };
       onEditProject({ ...project, documents: [...(project.documents ?? []), doc] });
+      setUploadDocOpen(false);
+      setUploadDocFile(null);
+      setUploadDocName('');
+      setUploadDocCategory('');
+      setUploadDocDescription('');
     };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    reader.readAsDataURL(uploadDocFile);
   };
 
   const handleDownload = (doc: ProjectDocument) => {
@@ -817,19 +842,27 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               (project.documents ?? []).map((doc) => (
                 <Card key={doc.id}>
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center shrink-0">
                           <FileText className="w-5 h-5 text-red-600" />
                         </div>
-                        <div>
-                          <h4 className="font-medium text-slate-800">{doc.name}</h4>
-                          <p className="text-sm text-slate-500">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-medium text-slate-800 truncate">{doc.name}</h4>
+                            {doc.category && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 shrink-0">{doc.category}</span>
+                            )}
+                          </div>
+                          {doc.description && (
+                            <p className="text-xs text-slate-500 mt-0.5 truncate">{doc.description}</p>
+                          )}
+                          <p className="text-xs text-slate-400 mt-0.5">
                             {doc.size} • Uploaded by {doc.uploadedBy} on {doc.uploadedAt}
                           </p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => handleDownload(doc)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleDownload(doc)} className="shrink-0">
                         <Download className="w-4 h-4 mr-2" />
                         Download
                       </Button>
@@ -1464,6 +1497,92 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Document Dialog */}
+      <Dialog open={uploadDocOpen} onOpenChange={open => { setUploadDocOpen(open); if (!open) setUploadDocFile(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Upload Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* File Picker */}
+            <div className="space-y-1.5">
+              <Label>File <span className="text-red-500">*</span></Label>
+              <div
+                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${uploadDocFile ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50'}`}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploadDocFile ? (
+                  <div className="space-y-1">
+                    <FileText className="w-8 h-8 text-green-600 mx-auto" />
+                    <p className="text-sm font-medium text-green-700">{uploadDocFile.name}</p>
+                    <p className="text-xs text-green-600">{(uploadDocFile.size / 1024) >= 1024 ? `${((uploadDocFile.size / 1024) / 1024).toFixed(1)} MB` : `${Math.round(uploadDocFile.size / 1024)} KB`}</p>
+                    <p className="text-xs text-slate-400">Click to change file</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                    <p className="text-sm text-slate-500">Click to choose a file</p>
+                    <p className="text-xs text-slate-400">PDF, Word, Excel, Images accepted</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Document Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="doc-name">Document Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="doc-name"
+                value={uploadDocName}
+                onChange={e => setUploadDocName(e.target.value)}
+                placeholder="e.g. Site Investigation Report"
+              />
+              <p className="text-xs text-slate-400">You can rename the document before uploading.</p>
+            </div>
+
+            {/* Document Type */}
+            <div className="space-y-1.5">
+              <Label>Document Type <span className="text-slate-400 font-normal">(optional)</span></Label>
+              <Select value={uploadDocCategory} onValueChange={setUploadDocCategory}>
+                <SelectTrigger><SelectValue placeholder="Select document type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Technical Report">Technical Report</SelectItem>
+                  <SelectItem value="Field Data Sheet">Field Data Sheet</SelectItem>
+                  <SelectItem value="Engineering Plans">Engineering Plans</SelectItem>
+                  <SelectItem value="Test Results">Test Results</SelectItem>
+                  <SelectItem value="Contract / Agreement">Contract / Agreement</SelectItem>
+                  <SelectItem value="Photos">Photos</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label htmlFor="doc-desc">Description <span className="text-slate-400 font-normal">(optional)</span></Label>
+              <Textarea
+                id="doc-desc"
+                value={uploadDocDescription}
+                onChange={e => setUploadDocDescription(e.target.value)}
+                placeholder="Brief description of this document..."
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setUploadDocOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!uploadDocFile || !uploadDocName.trim()}
+              onClick={handleUploadSubmit}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Upload Document
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
