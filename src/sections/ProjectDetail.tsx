@@ -284,6 +284,8 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
   const [assignPMStaff, setAssignPMStaff] = useState<string[]>(project.manager ? [project.manager] : []);
   const [pmStaffConfirm, setPMStaffConfirm] = useState(false);
   const [teamConfirm, setTeamConfirm] = useState(false);
+  const [taskAssignConfirm, setTaskAssignConfirm] = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState<'archive' | 'restore' | null>(null);
 
   const [completeDialogTask, setCompleteDialogTask] = useState<Task | null>(null);
   const [completionNote, setCompletionNote] = useState('');
@@ -414,12 +416,12 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
             <DropdownMenuContent align="end">
               <DropdownMenuItem>Generate Report</DropdownMenuItem>
               {(canDirectDelete || canRequestDelete) && project.stage !== 'Archived' && (
-                <DropdownMenuItem onClick={() => onEditProject({ ...project, stage: 'Archived' })}>
+                <DropdownMenuItem onClick={() => setArchiveConfirm('archive')}>
                   Archive Project
                 </DropdownMenuItem>
               )}
               {(canDirectDelete || canRequestDelete) && project.stage === 'Archived' && (
-                <DropdownMenuItem onClick={() => onEditProject({ ...project, stage: undefined })}>
+                <DropdownMenuItem onClick={() => setArchiveConfirm('restore')}>
                   Restore Project
                 </DropdownMenuItem>
               )}
@@ -1377,59 +1379,121 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
       </Dialog>
 
       {/* TI Supervisor — Assign Staff to Task Dialog */}
-      <Dialog open={!!assignStaffTask} onOpenChange={() => setAssignStaffTask(null)}>
+      <Dialog open={!!assignStaffTask} onOpenChange={open => { if (!open) { setAssignStaffTask(null); setTaskAssignConfirm(false); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Assign Staff to Task</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            {assignStaffTask && (
-              <div className="bg-slate-50 rounded-lg p-2 text-sm font-medium text-slate-700">
-                {assignStaffTask.title}
+          {!taskAssignConfirm ? (
+            <>
+              <div className="space-y-3 py-2">
+                {assignStaffTask && (
+                  <div className="bg-slate-50 rounded-lg p-2 text-sm font-medium text-slate-700">
+                    {assignStaffTask.title}
+                  </div>
+                )}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="Search staff..."
+                    value={assignDialogSearch}
+                    onChange={e => setAssignDialogSearch(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+                <div className="space-y-1 max-h-52 overflow-y-auto">
+                  {projectStaffPool
+                    .filter(s => s.name.toLowerCase().includes(assignDialogSearch.toLowerCase()))
+                    .map(staff => (
+                      <label
+                        key={staff.name}
+                        className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={assignDialogSelected.includes(staff.name)}
+                          onCheckedChange={checked => {
+                            setAssignDialogSelected(prev =>
+                              checked ? [...prev, staff.name] : prev.filter(n => n !== staff.name)
+                            );
+                          }}
+                        />
+                        <span className="text-sm text-slate-800">{staff.name}</span>
+                      </label>
+                    ))}
+                  {projectStaffPool.filter(s => s.name.toLowerCase().includes(assignDialogSearch.toLowerCase())).length === 0 && (
+                    <p className="text-xs text-slate-400 text-center py-4">No staff found</p>
+                  )}
+                </div>
               </div>
-            )}
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Search staff..."
-                value={assignDialogSearch}
-                onChange={e => setAssignDialogSearch(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <div className="space-y-1 max-h-52 overflow-y-auto">
-              {projectStaffPool
-                .filter(s => s.name.toLowerCase().includes(assignDialogSearch.toLowerCase()))
-                .map(staff => (
-                  <label
-                    key={staff.name}
-                    className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={assignDialogSelected.includes(staff.name)}
-                      onCheckedChange={checked => {
-                        setAssignDialogSelected(prev =>
-                          checked ? [...prev, staff.name] : prev.filter(n => n !== staff.name)
-                        );
-                      }}
-                    />
-                    <span className="text-sm text-slate-800">{staff.name}</span>
-                  </label>
-                ))}
-              {projectStaffPool.filter(s => s.name.toLowerCase().includes(assignDialogSearch.toLowerCase())).length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-4">No staff found</p>
-              )}
-            </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAssignStaffTask(null)}>Cancel</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setTaskAssignConfirm(true)}>
+                  Review Assignment
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <p className="text-sm font-medium text-slate-600">Please confirm the following assignment:</p>
+                <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Task</span>
+                    <span className="font-medium text-slate-800 text-right max-w-[60%]">{assignStaffTask?.title}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Assigned Staff ({assignDialogSelected.length})</span>
+                    <span className="font-medium text-slate-800 text-right max-w-[60%]">
+                      {assignDialogSelected.length > 0 ? assignDialogSelected.join(', ') : <span className="text-slate-400">None</span>}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400">Click Confirm to apply this assignment.</p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setTaskAssignConfirm(false)}>Go Back</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+                  if (assignStaffTask) {
+                    onEditTask({ ...assignStaffTask, assignedTo: assignDialogSelected });
+                  }
+                  setTaskAssignConfirm(false);
+                  setAssignStaffTask(null);
+                }}>
+                  Confirm Assignment
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive / Restore Confirmation Dialog */}
+      <Dialog open={!!archiveConfirm} onOpenChange={() => setArchiveConfirm(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{archiveConfirm === 'archive' ? 'Archive Project' : 'Restore Project'}</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-slate-600">
+              {archiveConfirm === 'archive'
+                ? `Are you sure you want to archive "${project.name}"? It will be moved to the archived section and marked as inactive.`
+                : `Are you sure you want to restore "${project.name}"? It will be returned to active projects.`}
+            </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignStaffTask(null)}>Cancel</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
-              if (assignStaffTask) {
-                onEditTask({ ...assignStaffTask, assignedTo: assignDialogSelected });
-              }
-              setAssignStaffTask(null);
-            }}>
-              Save Assignment
+            <Button variant="outline" onClick={() => setArchiveConfirm(null)}>Cancel</Button>
+            <Button
+              className={archiveConfirm === 'archive' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}
+              onClick={() => {
+                if (archiveConfirm === 'archive') {
+                  onEditProject({ ...project, stage: 'Archived' });
+                } else {
+                  onEditProject({ ...project, stage: undefined });
+                }
+                setArchiveConfirm(null);
+              }}
+            >
+              {archiveConfirm === 'archive' ? 'Yes, Archive' : 'Yes, Restore'}
             </Button>
           </DialogFooter>
         </DialogContent>

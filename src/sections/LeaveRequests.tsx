@@ -53,6 +53,7 @@ export function LeaveRequests({ leaveRequests, onResolve, onMarkReturned }: Leav
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [reviewTarget, setReviewTarget] = useState<LeaveRequest | null>(null);
   const [reviewNote, setReviewNote] = useState('');
+  const [markReturnedTarget, setMarkReturnedTarget] = useState<string | null>(null);
 
   const filtered = leaveRequests.filter(r =>
     filterStatus === 'all' || r.status === filterStatus
@@ -166,7 +167,7 @@ export function LeaveRequests({ leaveRequests, onResolve, onMarkReturned }: Leav
                     size="sm"
                     variant="outline"
                     className="shrink-0 border-blue-200 text-blue-600 hover:bg-blue-50"
-                    onClick={() => onMarkReturned(req.staffName)}
+                    onClick={() => setMarkReturnedTarget(req.staffName)}
                     title="Mark staff as returned from leave"
                   >
                     Mark Returned
@@ -219,6 +220,33 @@ export function LeaveRequests({ leaveRequests, onResolve, onMarkReturned }: Leav
             </Button>
             <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleDecision('Approved')}>
               <CheckCircle2 className="w-4 h-4 mr-1" /> Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark Returned Confirmation */}
+      <Dialog open={!!markReturnedTarget} onOpenChange={() => setMarkReturnedTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirm Staff Returned</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <div className="bg-slate-50 rounded-lg p-3 text-sm">
+              <p className="text-slate-500 text-xs mb-1">Staff Member</p>
+              <p className="font-medium text-slate-800">{markReturnedTarget}</p>
+            </div>
+            <p className="text-sm text-slate-600">
+              Confirm that <span className="font-medium">{markReturnedTarget}</span> has returned from leave? Their status will be set back to Available.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMarkReturnedTarget(null)}>Cancel</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+              if (markReturnedTarget) onMarkReturned(markReturnedTarget);
+              setMarkReturnedTarget(null);
+            }}>
+              Confirm Returned
             </Button>
           </DialogFooter>
         </DialogContent>

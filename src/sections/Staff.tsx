@@ -179,6 +179,7 @@ export function Staff({
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignStaffId, setAssignStaffId] = useState<string>('');
   const [assignProjectId, setAssignProjectId] = useState<string>('');
+  const [assignConfirm, setAssignConfirm] = useState(false);
 
   const [addStaffOpen, setAddStaffOpen] = useState(false);
   const [staffForm, setStaffForm] = useState(EMPTY_STAFF_FORM);
@@ -348,6 +349,7 @@ export function Staff({
   const openAssignDialog = (member: StaffType) => {
     setAssignStaffId(member.id);
     setAssignProjectId(projects[0]?.id ?? '');
+    setAssignConfirm(false);
     setAssignDialogOpen(true);
   };
 
@@ -902,37 +904,65 @@ export function Staff({
       </Dialog>
 
       {/* Assign Project Modal */}
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+      <Dialog open={assignDialogOpen} onOpenChange={open => { setAssignDialogOpen(open); if (!open) setAssignConfirm(false); }}>
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>Assign to Project</DialogTitle>
             <DialogDescription>Add this staff member to a project.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 py-2">
-            <Label>Project</Label>
-            <Select value={assignProjectId} onValueChange={setAssignProjectId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={submitAssign}>
-              Assign
-            </Button>
-          </DialogFooter>
+          {!assignConfirm ? (
+            <>
+              <div className="space-y-2 py-2">
+                <Label>Project</Label>
+                <Select value={assignProjectId} onValueChange={setAssignProjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" disabled={!assignProjectId} onClick={() => setAssignConfirm(true)}>
+                  Review Assignment
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <p className="text-sm font-medium text-slate-600">Please confirm the following assignment:</p>
+                <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Staff Member</span>
+                    <span className="font-medium text-slate-800">
+                      {staffList.find((m: StaffType) => m.id === assignStaffId)?.name ?? assignStaffId}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Project</span>
+                    <span className="font-medium text-slate-800 text-right max-w-[60%]">
+                      {projects.find(p => p.id === assignProjectId)?.name ?? assignProjectId}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400">Click Confirm to apply this assignment.</p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAssignConfirm(false)}>Go Back</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { submitAssign(); setAssignConfirm(false); }}>
+                  Confirm Assignment
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

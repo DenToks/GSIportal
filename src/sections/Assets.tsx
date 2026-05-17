@@ -84,6 +84,11 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
 
   const [editEquipTarget, setEditEquipTarget] = useState<Equipment | null>(null);
   const [editEquipForm, setEditEquipForm]     = useState(EMPTY_EQUIP);
+  const [assetConfirm, setAssetConfirm] = useState<{
+    type: 'return-vehicle' | 'return-equip' | 'maintenance-vehicle' | 'maintenance-equip' | 'available-vehicle' | 'available-equip';
+    id: string;
+    name: string;
+  } | null>(null);
 
   const openEditVehicle = (v: Vehicle) => {
     setEditVehicleTarget(v);
@@ -248,18 +253,18 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setDeployVehicleTarget(vehicle); setSelectedProjectId(''); }}>
                           Deploy
                         </Button>
-                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => onSetVehicleMaintenance(vehicle.id)}>
+                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setAssetConfirm({ type: 'maintenance-vehicle', id: vehicle.id, name: vehicle.name })}>
                           Set Maintenance
                         </Button>
                       </>
                     )}
                     {vehicle.status === 'Deployed' && (
-                      <Button size="sm" variant="outline" onClick={() => onReturnVehicle(vehicle.id)}>
+                      <Button size="sm" variant="outline" onClick={() => setAssetConfirm({ type: 'return-vehicle', id: vehicle.id, name: vehicle.name })}>
                         Return
                       </Button>
                     )}
                     {vehicle.status === 'Maintenance' && (
-                      <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => onMarkVehicleAvailable(vehicle.id)}>
+                      <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => setAssetConfirm({ type: 'available-vehicle', id: vehicle.id, name: vehicle.name })}>
                         Mark Available
                       </Button>
                     )}
@@ -319,18 +324,18 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                         <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => { setDeployEquipTarget(equip); setSelectedProjectId(''); }}>
                           Deploy
                         </Button>
-                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => onSetEquipmentMaintenance(equip.id)}>
+                        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setAssetConfirm({ type: 'maintenance-equip', id: equip.id, name: equip.name })}>
                           Set Maintenance
                         </Button>
                       </>
                     )}
                     {equip.status === 'Deployed' && (
-                      <Button size="sm" variant="outline" onClick={() => onReturnEquipment(equip.id)}>
+                      <Button size="sm" variant="outline" onClick={() => setAssetConfirm({ type: 'return-equip', id: equip.id, name: equip.name })}>
                         Return
                       </Button>
                     )}
                     {equip.status === 'Under Maintenance' && (
-                      <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => onMarkEquipmentAvailable(equip.id)}>
+                      <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => setAssetConfirm({ type: 'available-equip', id: equip.id, name: equip.name })}>
                         Mark Available
                       </Button>
                     )}
@@ -535,6 +540,52 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
               <Button type="submit" className="bg-purple-600 hover:bg-purple-700">Save Changes</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Asset Action Confirmation Dialog */}
+      <Dialog open={!!assetConfirm} onOpenChange={() => setAssetConfirm(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {assetConfirm?.type.startsWith('return') && 'Return Asset'}
+              {assetConfirm?.type.startsWith('maintenance') && 'Set as Maintenance'}
+              {assetConfirm?.type.startsWith('available') && 'Mark as Available'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <div className="bg-slate-50 rounded-lg p-3 text-sm">
+              <p className="text-slate-500 text-xs mb-1">Asset</p>
+              <p className="font-medium text-slate-800">{assetConfirm?.name}</p>
+            </div>
+            <p className="text-sm text-slate-600">
+              {assetConfirm?.type.startsWith('return') && 'Confirm that this asset has been returned and is no longer on-site? Its status will be set to Available.'}
+              {assetConfirm?.type.startsWith('maintenance') && 'Set this asset status to Under Maintenance? It will not be available for deployment until marked Available again.'}
+              {assetConfirm?.type.startsWith('available') && 'Mark this asset as Available? It will be ready for deployment to a project.'}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssetConfirm(null)}>Cancel</Button>
+            <Button
+              className={
+                assetConfirm?.type.startsWith('return') ? 'bg-blue-600 hover:bg-blue-700' :
+                assetConfirm?.type.startsWith('maintenance') ? 'bg-amber-600 hover:bg-amber-700' :
+                'bg-green-600 hover:bg-green-700'
+              }
+              onClick={() => {
+                if (!assetConfirm) return;
+                if (assetConfirm.type === 'return-vehicle') onReturnVehicle(assetConfirm.id);
+                if (assetConfirm.type === 'return-equip') onReturnEquipment(assetConfirm.id);
+                if (assetConfirm.type === 'maintenance-vehicle') onSetVehicleMaintenance(assetConfirm.id);
+                if (assetConfirm.type === 'maintenance-equip') onSetEquipmentMaintenance(assetConfirm.id);
+                if (assetConfirm.type === 'available-vehicle') onMarkVehicleAvailable(assetConfirm.id);
+                if (assetConfirm.type === 'available-equip') onMarkEquipmentAvailable(assetConfirm.id);
+                setAssetConfirm(null);
+              }}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
