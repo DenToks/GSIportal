@@ -103,6 +103,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [createConfirm, setCreateConfirm] = useState(false);
 
   // PM Supervisor: assign project to PM Staff
   const [assignPMOpen, setAssignPMOpen] = useState(false);
@@ -173,14 +174,22 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingProject) {
+      const { assignedPMId, ...rest } = form;
+      const projectData = assignedPMId ? { ...rest, assignedPMId } : rest;
+      onEditProject({ ...editingProject, ...projectData });
+      setDialogOpen(false);
+    } else {
+      setCreateConfirm(true);
+    }
+  };
+
+  const handleConfirmCreate = () => {
     const { assignedPMId, ...rest } = form;
     const projectData = assignedPMId ? { ...rest, assignedPMId } : rest;
-    if (editingProject) {
-      onEditProject({ ...editingProject, ...projectData });
-    } else {
-      onAddProject({ id: `PRJ-${Date.now()}`, ...projectData });
-    }
+    onAddProject({ id: `PRJ-${Date.now()}`, ...projectData });
     setDialogOpen(false);
+    setCreateConfirm(false);
   };
 
   const setField = <K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) => {
@@ -414,11 +423,69 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
       )}
 
       {/* Create / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={open => { setDialogOpen(open); if (!open) setCreateConfirm(false); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProject ? 'Edit Project' : 'New Project'}</DialogTitle>
+            <DialogTitle>
+              {editingProject ? 'Edit Project' : createConfirm ? 'Confirm New Project' : 'New Project'}
+            </DialogTitle>
           </DialogHeader>
+          {createConfirm && !editingProject ? (
+            <>
+              <div className="space-y-4 py-2">
+                <p className="text-sm font-medium text-slate-600">Please review the project details before creating:</p>
+                <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">Project Name</p>
+                      <p className="font-medium text-slate-800">{form.name || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">Client</p>
+                      <p className="font-medium text-slate-800">{form.client || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">Type</p>
+                      <p className="font-medium text-slate-800">{form.type}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">Status</p>
+                      <p className="font-medium text-slate-800">{form.status}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">Start Date</p>
+                      <p className="font-medium text-slate-800">{form.startDate ? new Date(form.startDate).toLocaleDateString() : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">End Date</p>
+                      <p className="font-medium text-slate-800">{form.endDate ? new Date(form.endDate).toLocaleDateString() : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">Location</p>
+                      <p className="font-medium text-slate-800">{form.location || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">Progress</p>
+                      <p className="font-medium text-slate-800">{form.progress}%</p>
+                    </div>
+                    {form.description && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-slate-400 uppercase tracking-wide">Description</p>
+                        <p className="font-medium text-slate-800">{form.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400">Click "Go Back" to make changes, or "Confirm & Create" to save the project.</p>
+              </div>
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setCreateConfirm(false)}>Go Back</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleConfirmCreate}>
+                  Confirm & Create Project
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4 py-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5 sm:col-span-2">
@@ -544,10 +611,11 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
                 Cancel
               </Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                {editingProject ? 'Save Changes' : 'Create Project'}
+                {editingProject ? 'Save Changes' : 'Review & Create'}
               </Button>
             </DialogFooter>
           </form>
+          )}
         </DialogContent>
       </Dialog>
 
