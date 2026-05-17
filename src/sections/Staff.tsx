@@ -183,6 +183,7 @@ export function Staff({
 
   const [addStaffOpen, setAddStaffOpen] = useState(false);
   const [staffForm, setStaffForm] = useState(EMPTY_STAFF_FORM);
+  const [createConfirm, setCreateConfirm] = useState(false);
 
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailStaffId, setDetailStaffId] = useState<string>('');
@@ -201,6 +202,10 @@ export function Staff({
 
   const handleAddStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setCreateConfirm(true);
+  };
+
+  const handleConfirmCreate = () => {
     const initials = staffForm.name
       .split(' ')
       .map(n => n[0])
@@ -232,6 +237,7 @@ export function Staff({
         : {}),
     });
     setStaffForm(EMPTY_STAFF_FORM);
+    setCreateConfirm(false);
     setAddStaffOpen(false);
   };
 
@@ -897,9 +903,29 @@ export function Staff({
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setAddStaffOpen(false)}>Cancel</Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Add Staff</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Review & Create</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Account Confirmation */}
+      <Dialog open={createConfirm} onOpenChange={open => { if (!open) setCreateConfirm(false); }}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Confirm New Account</DialogTitle>
+            <DialogDescription>Please review the details before creating this account.</DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm">
+            <div className="flex justify-between"><span className="text-slate-500">Name</span><span className="font-medium text-slate-800">{staffForm.name}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Role</span><span className="font-medium text-slate-800">{staffForm.jobPosition || staffForm.systemRole}</span></div>
+            {staffForm.department && <div className="flex justify-between"><span className="text-slate-500">Department</span><span className="font-medium text-slate-800">{staffForm.department}</span></div>}
+            <div className="flex justify-between"><span className="text-slate-500">Email</span><span className="font-medium text-slate-800">{staffForm.email}</span></div>
+          </div>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setCreateConfirm(false)}>Go Back</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleConfirmCreate}>Confirm & Create Account</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
