@@ -281,7 +281,9 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
   const [requestDeleteOpen, setRequestDeleteOpen] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [assignPMStaffOpen, setAssignPMStaffOpen] = useState(false);
-  const [assignPMStaff, setAssignPMStaff] = useState<string[]>(project.team);
+  const [assignPMStaff, setAssignPMStaff] = useState<string[]>(project.manager ? [project.manager] : []);
+  const [pmStaffConfirm, setPMStaffConfirm] = useState(false);
+  const [teamConfirm, setTeamConfirm] = useState(false);
 
   const [completeDialogTask, setCompleteDialogTask] = useState<Task | null>(null);
   const [completionNote, setCompletionNote] = useState('');
@@ -386,13 +388,13 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
         </div>
         <div className="flex items-center gap-2">
           {isSupervisor && (
-            <Button variant="outline" onClick={() => { setAssignTeam(project.team.filter(n => n !== project.manager)); setAssignTeamOpen(true); }}>
+            <Button variant="outline" onClick={() => { setAssignTeam(project.team.filter(n => n !== project.manager)); setTeamConfirm(false); setAssignTeamOpen(true); }}>
               <Users className="w-4 h-4 mr-2" />
               Assign Team
             </Button>
           )}
           {isPMSupervisor && (
-            <Button variant="outline" onClick={() => { setAssignPMStaff(project.team); setAssignPMStaffOpen(true); }}>
+            <Button variant="outline" onClick={() => { setAssignPMStaff(project.manager ? [project.manager] : []); setPMStaffConfirm(false); setAssignPMStaffOpen(true); }}>
               <Users className="w-4 h-4 mr-2" />
               Assign PM Staff
             </Button>
@@ -561,19 +563,25 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {project.team.map((member, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
-                          {member.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{member}</p>
-                        <p className="text-xs text-slate-500">Team Member</p>
+                  {project.team.map((member, index) => {
+                    const memberUser = users.find(u => u.name === member);
+                    const memberRole = member === project.manager
+                      ? 'PM Staff'
+                      : (memberUser?.jobPosition ?? memberUser?.role ?? 'Field Staff');
+                    return (
+                      <div key={index} className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+                            {member.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">{member}</p>
+                          <p className="text-xs text-slate-500">{memberRole}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {project.team.length === 0 && (
                     <p className="text-sm text-slate-400">No team members assigned yet.</p>
                   )}
@@ -1137,75 +1145,150 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
       </Dialog>
 
       {/* Supervisor — Assign Manpower Dialog */}
-      <Dialog open={assignTeamOpen} onOpenChange={setAssignTeamOpen}>
+      <Dialog open={assignTeamOpen} onOpenChange={open => { setAssignTeamOpen(open); if (!open) setTeamConfirm(false); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Assign Manpower</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-slate-500">
-              Drag staff members into the drop zone to assign them to this project.
-            </p>
-            {project.manager && (
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 text-sm">
-                  <span>{project.manager}</span>
-                </div>
+          {!teamConfirm ? (
+            <>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-slate-500">
+                  Drag staff members into the drop zone to assign them to this project.
+                </p>
+                {project.manager && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-slate-500">Project Manager (non-removable)</p>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 text-sm">
+                      <span>{project.manager}</span>
+                    </div>
+                  </div>
+                )}
+                <StaffPicker
+                  staffList={pickableStaff}
+                  selected={assignTeam}
+                  onChange={setAssignTeam}
+                  multiple
+                  dropLabel="Drag staff here to add to project"
+                />
               </div>
-            )}
-            <StaffPicker
-              staffList={pickableStaff}
-              selected={assignTeam}
-              onChange={setAssignTeam}
-              multiple
-              dropLabel="Drag staff here to add to project"
-            />
-          </div>
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setAssignTeamOpen(false)}>Cancel</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
-              const finalTeam = project.manager
-                ? [project.manager, ...assignTeam.filter(n => n !== project.manager)]
-                : assignTeam;
-              onEditProject({ ...project, team: finalTeam });
-              setAssignTeamOpen(false);
-            }}>
-              Save Assignment
-            </Button>
-          </DialogFooter>
+              <DialogFooter className="pt-2">
+                <Button variant="outline" onClick={() => setAssignTeamOpen(false)}>Cancel</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setTeamConfirm(true)}>
+                  Review Assignment
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-slate-600 font-medium">Please confirm the following assignment:</p>
+                <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Project</span>
+                    <span className="font-medium text-slate-800">{project.name}</span>
+                  </div>
+                  {project.manager && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Project Manager</span>
+                      <span className="font-medium text-slate-800">{project.manager}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Field Staff ({assignTeam.length})</span>
+                    <span className="font-medium text-slate-800 text-right max-w-[60%]">
+                      {assignTeam.length > 0 ? assignTeam.join(', ') : <span className="text-slate-400">None</span>}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400">Click Confirm to apply this assignment.</p>
+              </div>
+              <DialogFooter className="pt-2">
+                <Button variant="outline" onClick={() => setTeamConfirm(false)}>Go Back</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+                  const finalTeam = project.manager
+                    ? [project.manager, ...assignTeam.filter(n => n !== project.manager)]
+                    : assignTeam;
+                  onEditProject({ ...project, team: finalTeam });
+                  setTeamConfirm(false);
+                  setAssignTeamOpen(false);
+                }}>
+                  Confirm Assignment
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* PM Supervisor — Assign PM Staff Dialog */}
-      <Dialog open={assignPMStaffOpen} onOpenChange={setAssignPMStaffOpen}>
+      <Dialog open={assignPMStaffOpen} onOpenChange={open => { setAssignPMStaffOpen(open); if (!open) setPMStaffConfirm(false); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Assign PM Staff to Project</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-slate-500">
-              Drag PM Staff members into the drop zone to assign them to this project.
-            </p>
-            <StaffPicker
-              staffList={pickablePMStaff}
-              selected={assignPMStaff}
-              onChange={setAssignPMStaff}
-              multiple
-              dropLabel="Drag PM Staff here to add to project"
-            />
-          </div>
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setAssignPMStaffOpen(false)}>Cancel</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
-              const managerName = assignPMStaff.length > 0 ? assignPMStaff[0] : project.manager;
-              const u = users.find(x => x.name === managerName);
-              const assignedPMId = u ? u.id : project.assignedPMId;
-              onEditProject({ ...project, team: assignPMStaff, manager: managerName, assignedPMId });
-              setAssignPMStaffOpen(false);
-            }}>
-              Save Assignment
-            </Button>
-          </DialogFooter>
+          {!pmStaffConfirm ? (
+            <>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-slate-500">
+                  Drag a PM Staff member into the drop zone to assign them to this project.
+                </p>
+                <StaffPicker
+                  staffList={pickablePMStaff}
+                  selected={assignPMStaff}
+                  onChange={setAssignPMStaff}
+                  multiple
+                  dropLabel="Drag PM Staff here to assign"
+                />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button variant="outline" onClick={() => setAssignPMStaffOpen(false)}>Cancel</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setPMStaffConfirm(true)}>
+                  Review Assignment
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-slate-600 font-medium">Please confirm the following assignment:</p>
+                <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Project</span>
+                    <span className="font-medium text-slate-800">{project.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Assigned PM Staff</span>
+                    <span className="font-medium text-slate-800">
+                      {assignPMStaff[0] ?? <span className="text-red-500">None (will unassign)</span>}
+                    </span>
+                  </div>
+                  {project.manager && project.manager !== assignPMStaff[0] && (
+                    <div className="flex justify-between text-amber-600">
+                      <span>Previous PM Staff</span>
+                      <span className="font-medium">{project.manager} (will be removed)</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400">Click Confirm to apply this assignment.</p>
+              </div>
+              <DialogFooter className="pt-2">
+                <Button variant="outline" onClick={() => setPMStaffConfirm(false)}>Go Back</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+                  const selectedPMName = assignPMStaff[0] ?? '';
+                  const u = selectedPMName ? users.find(x => x.name === selectedPMName) : undefined;
+                  const assignedPMId = u?.id ?? '';
+                  const nonPMTeam = project.team.filter(n => n !== project.manager);
+                  const newTeam = selectedPMName ? [selectedPMName, ...nonPMTeam] : nonPMTeam;
+                  onEditProject({ ...project, team: newTeam, manager: selectedPMName, assignedPMId });
+                  setPMStaffConfirm(false);
+                  setAssignPMStaffOpen(false);
+                }}>
+                  Confirm Assignment
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
