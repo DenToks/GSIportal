@@ -294,18 +294,10 @@ export function Staff({
     setAssignDialogOpen(false);
   };
 
-  const projectsForStaff = (member: StaffType) => {
-    if (member.assignedProjectIds && member.assignedProjectIds.length > 0) {
-      return member.assignedProjectIds.length;
-    }
-    return member.currentProjects;
-  };
-
   const getAssignedProjectsForStaff = (member: StaffType): Project[] => {
-    const matchedUser = matchUser(member);
-    if (!matchedUser) return [];
-    // Find projects where this user is assigned as PM Staff
-    return projects.filter(p => p.assignedPMId === matchedUser.id);
+    return projects.filter(p =>
+      p.stage !== 'Archived' && p.team.includes(member.name)
+    );
   };
 
   const openDetailDialog = (member: StaffType) => {
@@ -509,22 +501,8 @@ export function Staff({
                   <TableCell className="text-sm text-slate-600">{member.email}</TableCell>
                   <TableCell className="text-center font-medium text-slate-700">
                     {(() => {
-                      const matchedUser = matchUser(member);
-                      if (matchedUser) {
-                        const assignedProjects = projects.filter(p => p.assignedPMId === matchedUser.id);
-                        if (assignedProjects.length > 0) {
-                          return (
-                            <div className="flex flex-wrap gap-1 justify-center">
-                              {assignedProjects.map(p => (
-                                <Badge key={p.id} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                                  {p.name}
-                                </Badge>
-                              ))}
-                            </div>
-                          );
-                        }
-                      }
-                      return projectsForStaff(member) > 0 ? projectsForStaff(member) : '—';
+                      const count = projects.filter(p => p.stage !== 'Archived' && p.team.includes(member.name)).length;
+                      return count > 0 ? count : '—';
                     })()}
                   </TableCell>
                   <TableCell>
