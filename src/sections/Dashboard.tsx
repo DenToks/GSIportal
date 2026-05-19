@@ -8,12 +8,13 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
+  Activity,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import type { Project, Task, User, Staff as StaffType } from '@/types';
+import type { Project, Task, User, Staff as StaffType, ActivityLog } from '@/types';
 import type { View } from '@/components/Sidebar';
 
 interface DashboardProps {
@@ -23,6 +24,7 @@ interface DashboardProps {
   onNavigate: (view: View) => void;
   currentUser?: User;
   staffList?: StaffType[];
+  activityLogs?: ActivityLog[];
 }
 
 const getStatusColor = (status: string) => {
@@ -72,7 +74,7 @@ interface StatCard {
   icon: React.ReactNode;
 }
 
-export function Dashboard({ projects, tasks, onProjectClick, onNavigate, currentUser, staffList = [] }: DashboardProps) {
+export function Dashboard({ projects, tasks, onProjectClick, onNavigate, currentUser, staffList = [], activityLogs = [] }: DashboardProps) {
   const role = currentUser?.role;
   const jobPosition = currentUser?.jobPosition;
 
@@ -184,6 +186,21 @@ export function Dashboard({ projects, tasks, onProjectClick, onNavigate, current
   })();
 
   const taskNavTarget: View = role === 'Staff' || (role === 'Project Manager' && jobPosition === 'PM Staff') ? 'tasks' : 'tasks';
+
+  // Recent activity feed — Admin sees all, Staff sees their own + their projects
+  const recentActivity = (() => {
+    const sorted = [...activityLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    if (role === 'Staff') {
+      const myProjectNames = new Set(staffProjects.map(p => p.name));
+      return sorted.filter(log =>
+        log.userName === currentUser?.name || myProjectNames.has(log.target)
+      ).slice(0, 10);
+    }
+    return sorted.slice(0, 10);
+  })();
+
+  const getInitials = (name: string) =>
+    name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <div className="space-y-6">
@@ -354,6 +371,45 @@ export function Dashboard({ projects, tasks, onProjectClick, onNavigate, current
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Activity */}
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Activity className="w-5 h-5 text-blue-500" />
+            Recent Activity
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => onNavigate('activity-logs')}>
+            View All <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {recentActivity.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No recent activity.</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {recentActivity.map(log => (
+                <div key={log.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-xs font-semibold text-blue-700">{getInitials(log.userName)}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-700">
+                      <span className="font-medium text-slate-800">{log.userName}</span>
+                      {' '}{log.action}{' '}
+                      <span className="text-blue-600 font-medium">{log.target}</span>
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {new Date(log.timestamp).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
+                      {new Date(log.timestamp).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -712,7 +712,7 @@ function App() {
 
           {/* ── Internal portal ── */}
           {!isClient && currentView === 'dashboard' && (
-            <Dashboard projects={projects} tasks={activeTasks} onProjectClick={handleProjectClick} onNavigate={handleNavigate} currentUser={currentUser} staffList={computedStaffList} />
+            <Dashboard projects={projects} tasks={activeTasks} onProjectClick={handleProjectClick} onNavigate={handleNavigate} currentUser={currentUser} staffList={computedStaffList} activityLogs={activityLogs} />
           )}
           {!isClient && currentView === 'projects' && (
             <Projects
