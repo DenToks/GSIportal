@@ -59,6 +59,7 @@ const EMPTY_TASK_FORM = {
   assignedTo: [] as string[],
   status: 'Pending' as Task['status'],
   priority: 'Medium' as Task['priority'],
+  startDate: '',
   dueDate: '',
 };
 
@@ -166,6 +167,7 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
       assignedTo: task.assignedTo,
       status: task.status,
       priority: task.priority,
+      startDate: task.startDate ?? '',
       dueDate: task.dueDate,
     });
     setDialogOpen(true);
@@ -407,6 +409,12 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
                       <User className="w-3 h-3" />
                       {task.assignedTo.join(', ')}
                     </span>
+                    {task.startDate && (
+                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                        <Calendar className="w-3 h-3" />
+                        Start {new Date(task.startDate).toLocaleDateString()}
+                      </span>
+                    )}
                     <span className="flex items-center gap-1 text-xs text-slate-500">
                       <Calendar className="w-3 h-3" />
                       Due {new Date(task.dueDate).toLocaleDateString()}
@@ -494,14 +502,25 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="task-due">Due Date</Label>
-              <Input
-                id="task-due"
-                type="date"
-                value={form.dueDate}
-                onChange={e => setField('dueDate', e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="task-start">Start Date</Label>
+                <Input
+                  id="task-start"
+                  type="date"
+                  value={form.startDate}
+                  onChange={e => setField('startDate', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="task-due">Due Date</Label>
+                <Input
+                  id="task-due"
+                  type="date"
+                  value={form.dueDate}
+                  onChange={e => setField('dueDate', e.target.value)}
+                />
+              </div>
             </div>
 
             <DialogFooter className="pt-2">

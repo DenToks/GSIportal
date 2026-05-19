@@ -71,6 +71,7 @@ export interface Task {
   assignedTo: string[];
   status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
   priority: 'Low' | 'Medium' | 'High';
+  startDate?: string;
   dueDate: string;
   completedDate?: string;
   completionNote?: string;

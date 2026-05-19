@@ -342,7 +342,7 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
     }
   };
 
-  const EMPTY_TASK = { title: '', description: '', assignedTo: [] as string[], status: 'Pending' as Task['status'], priority: 'Medium' as Task['priority'], dueDate: '' };
+  const EMPTY_TASK = { title: '', description: '', assignedTo: [] as string[], status: 'Pending' as Task['status'], priority: 'Medium' as Task['priority'], startDate: '', dueDate: '' };
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [taskForm, setTaskForm] = useState(EMPTY_TASK);
@@ -353,7 +353,7 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
 
   const openEditTask = (task: Task) => {
     setEditingTask(task);
-    setTaskForm({ title: task.title, description: task.description, assignedTo: task.assignedTo, status: task.status, priority: task.priority, dueDate: task.dueDate });
+    setTaskForm({ title: task.title, description: task.description, assignedTo: task.assignedTo, status: task.status, priority: task.priority, startDate: task.startDate ?? '', dueDate: task.dueDate });
     setTaskDialogOpen(true);
   };
 
@@ -637,6 +637,12 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
                           <Users className="w-4 h-4" />
                           {task.assignedTo.join(', ')}
                         </span>
+                        {task.startDate && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            Start {new Date(task.startDate).toLocaleDateString()}
+                          </span>
+                        )}
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
                           Due {new Date(task.dueDate).toLocaleDateString()}
@@ -964,21 +970,32 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="ptask-due">Due Date</Label>
-              <Input
-                id="ptask-due"
-                type="date"
-                value={taskForm.dueDate}
-                onChange={e => setTaskField('dueDate', e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="ptask-start">Start Date</Label>
+                <Input
+                  id="ptask-start"
+                  type="date"
+                  value={taskForm.startDate}
+                  onChange={e => setTaskField('startDate', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ptask-due">Due Date</Label>
+                <Input
+                  id="ptask-due"
+                  type="date"
+                  value={taskForm.dueDate}
+                  onChange={e => setTaskField('dueDate', e.target.value)}
+                />
+              </div>
             </div>
 
-            {project.team.length > 0 && (
+            {project.team.filter(n => n !== _currentUser?.name).length > 0 && (
               <div className="space-y-1.5">
                 <Label>Assign Staff</Label>
                 <div className="space-y-1 max-h-36 overflow-y-auto border border-slate-200 rounded-lg p-2">
-                  {project.team.map(name => (
+                  {project.team.filter(n => n !== _currentUser?.name).map(name => (
                     <label key={name} className="flex items-center gap-2 p-1 hover:bg-slate-50 cursor-pointer rounded">
                       <Checkbox
                         checked={taskForm.assignedTo.includes(name)}
