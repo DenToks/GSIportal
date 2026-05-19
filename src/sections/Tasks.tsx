@@ -187,6 +187,8 @@ export function Tasks({ tasks, projects, onUpdateStatus, onAddTask, onEditTask, 
 
   const visibleTaskSource = isPMStaff
     ? tasks.filter((task) => manageableProjects.some((project) => project.id === task.projectId))
+    : isStaff
+    ? tasks.filter((task) => task.assignedTo.includes(currentUser?.name ?? ''))
     : tasks;
 
   const filteredTasks = visibleTaskSource.filter(task => {
