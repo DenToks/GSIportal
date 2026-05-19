@@ -728,6 +728,7 @@ function App() {
               tasks={activeTasks.filter(t => t.projectId === selectedProjectId)}
               onBack={() => handleNavigate('projects')}
               onEditProject={handleEditProject}
+              onAssignClientToProject={handleAssignClientToProject}
               onDeleteProject={handleDeleteProject}
               onRequestDeletion={handleRequestDeletion}
               onAddTask={handleAddTask}

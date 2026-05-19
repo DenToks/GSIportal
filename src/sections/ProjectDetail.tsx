@@ -57,6 +57,7 @@ interface ProjectDetailProps {
   onAddTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
   onUpdateTaskStatus?: (taskId: string, status: Task['status']) => void;
+  onAssignClientToProject?: (clientUserId: string, projectId: string) => void;
   role?: Role;
   jobPosition?: string;
   staffList?: StaffType[];
@@ -109,7 +110,7 @@ const getPriorityColor = (priority: string) => {
 
 
 
-export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteProject, onRequestDeletion, onAddTask, onEditTask, onUpdateTaskStatus, role, jobPosition, staffList = [], currentUser: _currentUser, users = [], activityLogs = [], vehicles = [], equipment = [] }: ProjectDetailProps) { // _currentUser used in upload handlers
+export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteProject, onRequestDeletion, onAddTask, onEditTask, onUpdateTaskStatus, onAssignClientToProject, role, jobPosition, staffList = [], currentUser: _currentUser, users = [], activityLogs = [], vehicles = [], equipment = [] }: ProjectDetailProps) { // _currentUser used in upload handlers
   const isStaff = role === 'Staff';
   const isSupervisor = role === 'Supervisor' && jobPosition === 'TI Supervisor';
   const isBDSupervisor  = role === 'Project Manager' && jobPosition === 'BD Supervisor';
@@ -249,6 +250,8 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
   };
 
   const [editOpen, setEditOpen] = useState(false);
+  const [selectedClientUserId, setSelectedClientUserId] = useState('');
+  const clientUsers = users.filter(u => u.role === 'Client');
   const [form, setForm] = useState({
     name: project.name,
     client: project.client,
@@ -275,12 +278,17 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
       location: project.location,
       description: project.description,
     });
+    const matched = clientUsers.find(u => u.name === project.client || u.clientProjectIds?.includes(project.id));
+    setSelectedClientUserId(matched?.id ?? '');
     setEditOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onEditProject({ ...project, ...form });
+    if (selectedClientUserId && onAssignClientToProject) {
+      onAssignClientToProject(selectedClientUserId, project.id);
+    }
     setEditOpen(false);
   };
 
@@ -1251,8 +1259,26 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="pd-client">Client <span className="text-red-500">*</span></Label>
-                <Input id="pd-client" value={form.client} onChange={e => setField('client', e.target.value)} required />
+                <Label>Client <span className="text-red-500">*</span></Label>
+                {isBDSupervisor && clientUsers.length > 0 ? (
+                  <Select
+                    value={selectedClientUserId}
+                    onValueChange={v => {
+                      setSelectedClientUserId(v);
+                      const u = clientUsers.find(c => c.id === v);
+                      if (u) setField('client', u.name);
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select a client account" /></SelectTrigger>
+                    <SelectContent>
+                      {clientUsers.map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input id="pd-client" value={form.client} onChange={e => setField('client', e.target.value)} required />
+                )}
               </div>
 
               <div className="space-y-1.5">
