@@ -44,7 +44,9 @@ export const staff: Staff[] = [
     avatar: 'CR',
     status: 'Assigned',
     currentProjects: 3,
-    workload: 85
+    workload: 85,
+    certifications: ['Licensed Geotechnical Engineer', 'PICE Member', 'ASEP Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-002',
@@ -56,7 +58,9 @@ export const staff: Staff[] = [
     avatar: 'PL',
     status: 'Assigned',
     currentProjects: 3,
-    workload: 90
+    workload: 90,
+    certifications: ['PMP Certified', 'PICE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-003',
@@ -68,7 +72,9 @@ export const staff: Staff[] = [
     avatar: 'RT',
     status: 'Assigned',
     currentProjects: 2,
-    workload: 75
+    workload: 75,
+    certifications: ['Licensed Geotechnical Engineer', 'PGFE Member', 'Hazard Mapping Certified'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-004',
@@ -80,7 +86,9 @@ export const staff: Staff[] = [
     avatar: 'MS',
     status: 'Assigned',
     currentProjects: 2,
-    workload: 80
+    workload: 80,
+    certifications: ['Licensed Geotechnical Engineer', 'PICE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-005',
@@ -92,7 +100,9 @@ export const staff: Staff[] = [
     avatar: 'LG',
     status: 'Assigned',
     currentProjects: 2,
-    workload: 70
+    workload: 70,
+    certifications: ['Licensed Environmental Planner', 'PICE Member', 'EIA Practitioner'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-006',
@@ -104,7 +114,9 @@ export const staff: Staff[] = [
     avatar: 'AL',
     status: 'Assigned',
     currentProjects: 3,
-    workload: 95
+    workload: 95,
+    certifications: ['Licensed Geologist', 'PGFE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-007',
@@ -116,7 +128,9 @@ export const staff: Staff[] = [
     avatar: 'DL',
     status: 'Assigned',
     currentProjects: 2,
-    workload: 65
+    workload: 65,
+    certifications: ['Licensed Civil Engineer', 'PICE Member', 'Hydraulics Certified'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-008',
@@ -128,7 +142,9 @@ export const staff: Staff[] = [
     avatar: 'JC',
     status: 'Available',
     currentProjects: 1,
-    workload: 50
+    workload: 50,
+    certifications: ['Licensed Civil Engineer', 'PICE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-009',
@@ -140,7 +156,9 @@ export const staff: Staff[] = [
     avatar: 'SC',
     status: 'Available',
     currentProjects: 1,
-    workload: 45
+    workload: 45,
+    certifications: ['Licensed Civil Engineer', 'PICE Member', 'ASEP Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-010',
@@ -152,7 +170,9 @@ export const staff: Staff[] = [
     avatar: 'MR',
     status: 'Assigned',
     currentProjects: 2,
-    workload: 70
+    workload: 70,
+    certifications: ['Licensed Geologist', 'PGFE Member', 'Remote Sensing Certified'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-011',
@@ -164,7 +184,9 @@ export const staff: Staff[] = [
     avatar: 'MT',
     status: 'Available',
     currentProjects: 1,
-    workload: 40
+    workload: 40,
+    certifications: ['Licensed Civil Engineer', 'PICE Member', 'ASEP Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-012',
@@ -176,9 +198,10 @@ export const staff: Staff[] = [
     avatar: 'JW',
     status: 'On Leave',
     currentProjects: 0,
-    workload: 0
-  }
-  ,
+    workload: 0,
+    certifications: ['Licensed Geotechnical Engineer', 'PICE Member'],
+    maxWeeklyHours: 40
+  },
   {
     id: 'STF-013',
     name: 'Engr. Kevin Dela Cruz',
@@ -189,7 +212,9 @@ export const staff: Staff[] = [
     avatar: 'KD',
     status: 'Available',
     currentProjects: 1,
-    workload: 45
+    workload: 45,
+    certifications: ['PMP Certified', 'PICE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-014',
@@ -201,7 +226,9 @@ export const staff: Staff[] = [
     avatar: 'AB',
     status: 'Available',
     currentProjects: 1,
-    workload: 35
+    workload: 35,
+    certifications: ['PMP Certified', 'PICE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-015',
@@ -213,7 +240,9 @@ export const staff: Staff[] = [
     avatar: 'PR',
     status: 'Available',
     currentProjects: 1,
-    workload: 40
+    workload: 40,
+    certifications: ['Licensed Civil Engineer', 'PICE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-016',
@@ -225,7 +254,9 @@ export const staff: Staff[] = [
     avatar: 'LT',
     status: 'Available',
     currentProjects: 0,
-    workload: 30
+    workload: 30,
+    certifications: ['Licensed Civil Engineer', 'PICE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-017',
@@ -237,7 +268,9 @@ export const staff: Staff[] = [
     avatar: 'PM',
     status: 'Assigned',
     currentProjects: 1,
-    workload: 55
+    workload: 55,
+    certifications: ['Licensed Geotechnical Engineer', 'PICE Member'],
+    maxWeeklyHours: 40
   },
   {
     id: 'STF-018',

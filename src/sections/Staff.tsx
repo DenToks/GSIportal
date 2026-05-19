@@ -168,7 +168,7 @@ export function Staff({
 
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<StaffType | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', department: '', systemRole: 'Staff', jobPosition: '', clientProjectId: '' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', department: '', systemRole: 'Staff', jobPosition: '', clientProjectId: '', certifications: '', maxWeeklyHours: 40 });
 
   const isAdminAccount = (member: StaffType) => {
     const matchedUser = users.find(
@@ -319,6 +319,8 @@ export function Staff({
       systemRole: u ? getRoleFamilyFromLabel(u.jobPosition ?? u.role) : (member.systemRole ?? 'Staff'),
       jobPosition: u?.jobPosition ?? member.systemRole ?? '',
       clientProjectId: u?.clientProjectIds?.[0] ?? '',
+      certifications: (member.certifications ?? []).join(', '),
+      maxWeeklyHours: member.maxWeeklyHours ?? 40,
     });
     setEditOpen(true);
   };
@@ -336,6 +338,8 @@ export function Staff({
       systemRole: nextLabel,
       role: nextLabel,
       avatar: initials,
+      certifications: editForm.certifications ? editForm.certifications.split(',').map(s => s.trim()).filter(Boolean) : [],
+      maxWeeklyHours: editForm.maxWeeklyHours,
     });
     if (u) {
       onDirectRoleChange(u.id, editForm.systemRole as Role);
@@ -488,6 +492,16 @@ export function Staff({
                       <div>
                         <div className="font-medium text-slate-800">{member.name}</div>
                         <div className="text-xs text-slate-500">{member.department}</div>
+                        {member.certifications && member.certifications.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {member.certifications.slice(0, 2).map(cert => (
+                              <span key={cert} className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">{cert}</span>
+                            ))}
+                            {member.certifications.length > 2 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">+{member.certifications.length - 2}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -767,6 +781,25 @@ export function Staff({
                 </Select>
               </div>
             )}
+            <div className="space-y-1.5">
+              <Label>Certifications</Label>
+              <Input
+                value={editForm.certifications}
+                onChange={e => setEditForm(p => ({ ...p, certifications: e.target.value }))}
+                placeholder="e.g. Licensed Civil Engineer, PICE Member"
+              />
+              <p className="text-xs text-slate-400">Separate multiple certifications with commas</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Max Weekly Hours</Label>
+              <Input
+                type="number"
+                min={1}
+                max={80}
+                value={editForm.maxWeeklyHours}
+                onChange={e => setEditForm(p => ({ ...p, maxWeeklyHours: Number(e.target.value) }))}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>

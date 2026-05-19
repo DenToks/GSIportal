@@ -1,16 +1,9 @@
 import { useState } from "react";
-import { Eye, EyeOff, Lock, Mail, UserCog } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { User } from "@/types";
 import { users } from "@/data/sampleData";
 
@@ -18,44 +11,20 @@ interface LoginProps {
   onLogin: (user: User) => void;
 }
 
-// All selectable positions mapped to user IDs for demo
-const POSITION_MAP: { label: string; userId: string }[] = [
-  { label: 'Administrator',     userId: 'USR-ADMIN'    },
-  { label: 'BD Supervisor',     userId: 'USR-BD-1'     },
-  { label: 'PM Supervisor',     userId: 'USR-PMS-1'    },
-  { label: 'PM Staff',          userId: 'USR-PMSTAFF-1'},
-  { label: 'TI Supervisor',     userId: 'USR-TI-1'     },
-  { label: 'Support Supervisor',userId: 'USR-SS-1'     },
-  { label: 'Staff',             userId: 'USR-TECH-1'   },
-  { label: 'Client',            userId: 'USR-CLI-1'    },
-];
-
 export function Login({ onLogin }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState<string>("USR-ADMIN");
   const [isLoading, setIsLoading] = useState(false);
-
-  const handlePositionChange = (userId: string) => {
-    setSelectedUserId(userId);
-    const user = users.find(u => u.id === userId);
-    if (user) setEmail(user.email);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 600));
     setIsLoading(false);
-
-    // Try email match first, then fall back to selected position
-    const byEmail = email
-      ? users.find((u) => u.email.toLowerCase() === email.toLowerCase())
-      : undefined;
-    const byId = users.find(u => u.id === selectedUserId);
-    const matched = byEmail ?? byId ?? users[0];
-
+    const matched = email
+      ? (users.find((u) => u.email.toLowerCase() === email.toLowerCase()) ?? users[0])
+      : users[0];
     onLogin(matched);
   };
 
@@ -116,26 +85,6 @@ export function Login({ onLogin }: LoginProps) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* Position / Role */}
-            <div className="space-y-1.5">
-              <Label htmlFor="position" className="text-sm font-medium text-slate-700">
-                Sign in as
-              </Label>
-              <div className="relative">
-                <UserCog className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
-                <Select value={selectedUserId} onValueChange={handlePositionChange}>
-                  <SelectTrigger id="position" className="pl-9 border-slate-200 focus:border-blue-500 h-11">
-                    <SelectValue placeholder="Select your position" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {POSITION_MAP.map((p) => (
-                      <SelectItem key={p.userId} value={p.userId}>{p.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
             {/* Email */}
             <div className="space-y-1.5">

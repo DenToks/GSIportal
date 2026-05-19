@@ -91,6 +91,8 @@ export interface Staff {
   currentProjects: number;
   workload: number;
   assignedProjectIds?: string[];
+  certifications?: string[];
+  maxWeeklyHours?: number;
 }
 
 export interface Notification {

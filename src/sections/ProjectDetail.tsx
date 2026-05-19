@@ -1106,9 +1106,10 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
           {!teamConfirm ? (
             <>
               <div className="space-y-4 py-2">
-                <p className="text-sm text-slate-500">
-                  Drag staff members into the drop zone to assign them to this project.
-                </p>
+                <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700 flex items-start gap-2">
+                  <span className="mt-0.5">💡</span>
+                  <span>Suggested staff are automatically ranked by availability and qualifications. Select staff to assign to this project.</span>
+                </div>
                 {project.manager && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-slate-500">Project Manager (non-removable)</p>
@@ -1117,13 +1118,71 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
                     </div>
                   </div>
                 )}
-                <StaffPicker
-                  staffList={pickableStaff}
-                  selected={assignTeam}
-                  onChange={setAssignTeam}
-                  multiple
-                  dropLabel="Drag staff here to add to project"
-                />
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Field Staff</p>
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {[...pickableStaff]
+                      .sort((a, b) => {
+                        const order = { 'Available': 0, 'Assigned': 1, 'On Leave': 2 };
+                        return (order[a.status] ?? 1) - (order[b.status] ?? 1);
+                      })
+                      .map(staff => {
+                        const isSelected = assignTeam.includes(staff.name);
+                        const isOnLeave = staff.status === 'On Leave';
+                        const isAssigned = staff.status === 'Assigned';
+                        const isAvailable = staff.status === 'Available';
+                        return (
+                          <label
+                            key={staff.id}
+                            className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                              isSelected ? 'border-blue-400 bg-blue-50' :
+                              isOnLeave ? 'border-slate-200 bg-slate-50 opacity-60' :
+                              'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1 accent-blue-600"
+                              checked={isSelected}
+                              disabled={isOnLeave}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setAssignTeam(prev => [...prev, staff.name]);
+                                } else {
+                                  setAssignTeam(prev => prev.filter(n => n !== staff.name));
+                                }
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium text-slate-800">{staff.name}</span>
+                                {isAvailable && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">SUGGESTED</span>
+                                )}
+                                {isAssigned && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">ALREADY ASSIGNED</span>
+                                )}
+                                {isOnLeave && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">ON LEAVE</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 mt-0.5">{staff.role} • {staff.workload}% workload</p>
+                              {staff.certifications && staff.certifications.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {staff.certifications.map(cert => (
+                                    <span key={cert} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{cert}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {staff.maxWeeklyHours && (
+                                <p className="text-[10px] text-slate-400 mt-0.5">Max {staff.maxWeeklyHours}h/week</p>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
               </div>
               <DialogFooter className="pt-2">
                 <Button variant="outline" onClick={() => setAssignTeamOpen(false)}>Cancel</Button>
