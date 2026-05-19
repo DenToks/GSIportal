@@ -10,7 +10,6 @@ import { Staff } from '@/sections/Staff';
 import { Reports } from '@/sections/Reports';
 import { Login } from '@/sections/Login';
 import { ProjectDetail } from '@/sections/ProjectDetail';
-import { Approvals } from '@/sections/Approvals';
 import { LandingPage } from '@/sections/LandingPage';
 import { LeaveRequests } from '@/sections/LeaveRequests';
 import { MyLeave } from '@/sections/MyLeave';
@@ -28,7 +27,6 @@ import {
   tasks as initialTasks,
   notifications as initialNotifications,
   staff as initialStaff,
-  roleRequests as initialRoleRequests,
   dailyReports as initialDailyReports,
   users as initialUsers,
   leaveRequests as initialLeaveRequests,
@@ -42,7 +40,6 @@ import type {
   Task,
   Notification,
   Staff as StaffType,
-  RoleRequest,
   DailyReport,
   User,
   Role,
@@ -104,14 +101,6 @@ function App() {
       return initialUsers;
     }
   });
-  const [roleRequests, setRoleRequests] = useState<RoleRequest[]>(() => {
-    try {
-      const stored = localStorage.getItem(storageKey('roleRequests'));
-      return stored ? JSON.parse(stored) : initialRoleRequests;
-    } catch {
-      return initialRoleRequests;
-    }
-  });
   const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => {
     try {
       const stored = localStorage.getItem(storageKey('dailyReports'));
@@ -165,7 +154,6 @@ function App() {
       'notifications',
       'staff',
       'users',
-      'roleRequests',
       'dailyReports',
       'leaveRequests',
       'vehicles',
@@ -180,7 +168,6 @@ function App() {
   React.useEffect(() => { localStorage.setItem(storageKey('notifications'), JSON.stringify(notifications)); }, [notifications]);
   React.useEffect(() => { localStorage.setItem(storageKey('staff'), JSON.stringify(staffList)); }, [staffList]);
   React.useEffect(() => { localStorage.setItem(storageKey('users'), JSON.stringify(users)); }, [users]);
-  React.useEffect(() => { localStorage.setItem(storageKey('roleRequests'), JSON.stringify(roleRequests)); }, [roleRequests]);
   React.useEffect(() => { localStorage.setItem(storageKey('dailyReports'), JSON.stringify(dailyReports)); }, [dailyReports]);
   React.useEffect(() => { localStorage.setItem(storageKey('leaveRequests'), JSON.stringify(leaveRequests)); }, [leaveRequests]);
   React.useEffect(() => { localStorage.setItem(storageKey('vehicles'), JSON.stringify(vehicles)); }, [vehicles]);
@@ -204,7 +191,7 @@ function App() {
 
   // Export entire demo state as JSON
   const exportState = () => {
-    const state = { projects, tasks, notifications, staffList, users, roleRequests, dailyReports, leaveRequests, vehicles, equipment, activityLogs };
+    const state = { projects, tasks, notifications, staffList, users, dailyReports, leaveRequests, vehicles, equipment, activityLogs };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -222,7 +209,6 @@ function App() {
     if (obj.notifications) setNotifications(obj.notifications);
     if (obj.staffList) setStaffList(obj.staffList);
     if (obj.users) setUsers(obj.users);
-    if (obj.roleRequests) setRoleRequests(obj.roleRequests);
     if (obj.dailyReports) setDailyReports(obj.dailyReports);
     if (obj.leaveRequests) setLeaveRequests(obj.leaveRequests);
     if (obj.vehicles) setVehicles(obj.vehicles);
@@ -449,26 +435,6 @@ function App() {
     }, ...prev]);
   };
 
-  const handleSubmitRoleRequest = (input: { targetUserId: string; requestedRole: Role; reason: string }) => {
-    if (!currentUser) return;
-    const target = users.find(u => u.id === input.targetUserId);
-    if (!target) return;
-    const newReq: RoleRequest = {
-      id: `REQ-${Date.now()}`,
-      requesterId: currentUser.id,
-      requesterName: currentUser.name,
-      targetUserId: target.id,
-      targetUserName: target.name,
-      currentRole: target.role,
-      requestedRole: input.requestedRole,
-      reason: input.reason,
-      status: 'Pending',
-      createdAt: new Date().toISOString(),
-    };
-    setRoleRequests(prev => [newReq, ...prev]);
-    pushNotification({ type: 'approval', title: 'Role Change Requested', message: `${currentUser.name} requested ${target.name} be moved from ${target.role} to ${input.requestedRole}.`, audience: 'internal' });
-  };
-
   const handleDirectRoleChange = (userId: string, newRole: Role) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
   };
@@ -481,20 +447,6 @@ function App() {
     setStaffList(prev => prev.map(s => s.id === staffId ? { ...s, systemRole } : s));
   };
 
-  const handleResolveRoleRequest = (requestId: string, decision: 'Approved' | 'Denied') => {
-    if (!currentUser) return;
-    const req = roleRequests.find(r => r.id === requestId);
-    if (!req) return;
-    if (decision === 'Approved' && req.requesterId === currentUser.id) return;
-    setRoleRequests(prev => prev.map(r =>
-      r.id === requestId ? { ...r, status: decision, resolvedBy: currentUser.name, resolvedAt: new Date().toISOString() } : r,
-    ));
-    if (decision === 'Approved') {
-      setUsers(prev => prev.map(u => u.id === req.targetUserId ? { ...u, role: req.requestedRole } : u));
-    }
-    pushNotification({ type: 'approval', title: `Role Change ${decision}`, message: `${req.targetUserName}'s request to become ${req.requestedRole} was ${decision.toLowerCase()} by ${currentUser.name}.`, audience: 'internal' });
-    pushLog(`${decision} role change request`, `${req.targetUserName} → ${req.requestedRole}`);
-  };
 
   const handleSubmitDailyReport = (input: {
     projectId?: string; reportType?: DailyReport['reportType']; weatherCondition?: DailyReport['weatherCondition'];
@@ -693,7 +645,6 @@ function App() {
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         role={currentUser.role}
         jobPosition={jobPosition}
-        pendingApprovalsCount={roleRequests.filter(r => r.status === 'Pending').length}
         pendingLeaveCount={pendingLeaveCount}
         pendingDeletionCount={pendingDeletionCount}
       />
@@ -734,7 +685,6 @@ function App() {
               staffList={computedStaffList}
               users={users}
               currentUser={currentUser}
-              onSubmitRoleRequest={handleSubmitRoleRequest}
               onDirectRoleChange={handleDirectRoleChange}
               onUpdateUserJobPosition={handleUpdateUserJobPosition}
               onUpdateStaffSystemRole={handleUpdateStaffSystemRole}
@@ -778,9 +728,6 @@ function App() {
               vehicles={vehicles}
               equipment={equipment}
             />
-          )}
-          {!isClient && currentView === 'approvals' && currentUser.role === 'Admin' && (
-            <Approvals requests={roleRequests} currentUser={currentUser} onResolve={handleResolveRoleRequest} />
           )}
           {!isClient && currentView === 'activity-logs' && currentUser.role === 'Admin' && (
             <ActivityLogs logs={activityLogs} />

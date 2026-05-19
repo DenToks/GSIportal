@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  UserCog,
   FolderPlus,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -47,7 +46,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import type { Project, Role, Staff as StaffType, User } from '@/types';
 
 interface StaffProps {
@@ -55,11 +53,6 @@ interface StaffProps {
   users: User[];
   currentUser: User;
   projects: Project[];
-  onSubmitRoleRequest: (input: {
-    targetUserId: string;
-    requestedRole: Role;
-    reason: string;
-  }) => void;
   onDirectRoleChange: (userId: string, newRole: Role) => void;
   onUpdateUserJobPosition: (userId: string, jobPosition: string) => void;
   onUpdateStaffSystemRole: (staffId: string, systemRole: string) => void;
@@ -104,14 +97,6 @@ const getRoleFamilyFromLabel = (label: string): Role => {
   }
 };
 
-const ROLE_OPTIONS: Role[] = [
-  'Admin',
-  'Project Manager',
-  'Supervisor',
-  'Staff',
-  'Client',
-];
-
 const getSystemRoleColor = (role: string) => {
   switch (role) {
     case 'Admin': return 'bg-red-100 text-red-700 border-red-200';
@@ -154,7 +139,6 @@ export function Staff({
   users,
   currentUser,
   projects,
-  onSubmitRoleRequest,
   onDirectRoleChange,
   onUpdateUserJobPosition,
   onUpdateStaffSystemRole,
@@ -166,17 +150,6 @@ export function Staff({
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-
-  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
-  const [roleDialogMode, setRoleDialogMode] = useState<'manage' | 'request'>('request');
-  const [roleTargetUserId, setRoleTargetUserId] = useState<string>('');
-  const [roleTargetStaffId, setRoleTargetStaffId] = useState<string>('');
-  const [roleTargetName, setRoleTargetName] = useState<string>('');
-  const [requestedRole, setRequestedRole] = useState<Role>('Staff');
-  const [selectedSystemRole, setSelectedSystemRole] = useState<string>('Staff');
-  const [selectedJobPosition, setSelectedJobPosition] = useState<string>('');
-  const [roleReason, setRoleReason] = useState('');
-  const [reasonError, setReasonError] = useState('');
 
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignStaffId, setAssignStaffId] = useState<string>('');
@@ -307,56 +280,6 @@ export function Staff({
     users.find(
       (u) => u.email.toLowerCase() === member.email.toLowerCase() || u.name === member.name,
     );
-
-  const openRoleDialog = (member: StaffType, mode: 'manage' | 'request' = 'request') => {
-    const u = matchUser(member);
-    setRoleTargetStaffId(member.id);
-    setRoleTargetName(member.name);
-    if (u) {
-      setRoleTargetUserId(u.id);
-      setRequestedRole(u.role);
-      setSelectedSystemRole(getRoleFamilyFromLabel(u.jobPosition ?? u.role));
-      setSelectedJobPosition(u.jobPosition ?? '');
-    } else {
-      setRoleTargetUserId('');
-      const fallbackLabel = member.systemRole ?? member.role;
-      setRequestedRole(getRoleFamilyFromLabel(fallbackLabel));
-      setSelectedSystemRole(getRoleFamilyFromLabel(fallbackLabel));
-      setSelectedJobPosition(JOB_POSITIONS[getRoleFamilyFromLabel(fallbackLabel)]?.includes(fallbackLabel) ? fallbackLabel : '');
-    }
-    setRoleDialogMode(mode);
-    setRoleReason('');
-    setReasonError('');
-    setRoleDialogOpen(true);
-  };
-
-  const submitRoleRequest = () => {
-    if (!roleTargetUserId) {
-      setReasonError('Please select a target user.');
-      return;
-    }
-    if (!roleReason.trim()) {
-      setReasonError('Please provide a reason for the request.');
-      return;
-    }
-    onSubmitRoleRequest({
-      targetUserId: roleTargetUserId,
-      requestedRole,
-      reason: roleReason.trim(),
-    });
-    setRoleDialogOpen(false);
-  };
-
-  const submitDirectRoleChange = () => {
-    const nextSystemLabel = selectedJobPosition || (selectedSystemRole === 'Admin' ? 'Administrator' : selectedSystemRole);
-    if (roleTargetUserId) {
-      const nextRole = selectedSystemRole as Role;
-      onDirectRoleChange(roleTargetUserId, nextRole);
-      onUpdateUserJobPosition(roleTargetUserId, nextSystemLabel);
-    }
-    onUpdateStaffSystemRole(roleTargetStaffId, nextSystemLabel);
-    setRoleDialogOpen(false);
-  };
 
   const openAssignDialog = (member: StaffType) => {
     setAssignStaffId(member.id);
@@ -625,16 +548,6 @@ export function Staff({
                           Assign to Project
                         </Button>
                       )}
-                      {currentUser.role === 'Project Manager' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openRoleDialog(member, 'request')}
-                        >
-                          <UserCog className="w-4 h-4 mr-1" />
-                          Request Role Change
-                        </Button>
-                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -664,130 +577,6 @@ export function Staff({
           )}
         </CardContent>
       </Card>
-
-      {/* Role Dialog — Manage (Admin) or Request (PM/Supervisor) */}
-      <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>
-              {roleDialogMode === 'manage' ? 'Manage User Role' : 'Request Role Change'}
-            </DialogTitle>
-            <DialogDescription>
-              {roleDialogMode === 'manage'
-                ? 'Directly update the system role for this user.'
-                : 'Submit a role change request for an Admin to review.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {roleDialogMode === 'manage' ? (
-              <p className="text-sm text-slate-600">
-                Changing role for: <span className="font-semibold text-slate-800">{roleTargetName}</span>
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <Label>Target User</Label>
-                <Select value={roleTargetUserId} onValueChange={setRoleTargetUserId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a user account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users
-                      .filter((u) => u.role !== 'Client')
-                      .map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name} — {u.role}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {roleDialogMode === 'manage' ? (
-              <>
-                <div className="space-y-2">
-                  <Label>System Role</Label>
-                  <Select
-                    value={selectedSystemRole}
-                    onValueChange={(v) => {
-                      setSelectedSystemRole(v as Role);
-                      setSelectedJobPosition('');
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLE_OPTIONS.map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {JOB_POSITIONS[selectedSystemRole] && (
-                  <div className="space-y-2">
-                    <Label>Job Position</Label>
-                    <Select value={selectedJobPosition} onValueChange={setSelectedJobPosition}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select position" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {JOB_POSITIONS[selectedSystemRole].map((pos) => (
-                          <SelectItem key={pos} value={pos}>{pos}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="space-y-2">
-                <Label>Requested Role</Label>
-                <Select value={requestedRole} onValueChange={(v) => setRequestedRole(v as Role)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLE_OPTIONS.map((r) => (
-                      <SelectItem key={r} value={r}>{r}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {roleDialogMode === 'request' && (
-              <div className="space-y-2">
-                <Label htmlFor="reason">
-                  Reason <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="reason"
-                  rows={4}
-                  placeholder="Explain why this role change should be approved..."
-                  value={roleReason}
-                  onChange={(e) => setRoleReason(e.target.value)}
-                />
-                {reasonError && <p className="text-xs text-red-600">{reasonError}</p>}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRoleDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={roleDialogMode === 'manage' ? submitDirectRoleChange : submitRoleRequest}
-            >
-              {roleDialogMode === 'manage' ? 'Save Changes' : 'Submit Request'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Add Staff Dialog */}
       <Dialog open={addStaffOpen} onOpenChange={setAddStaffOpen}>

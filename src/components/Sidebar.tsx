@@ -6,7 +6,6 @@ import {
   FileBarChart,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck,
   FileText,
   UserSquare2,
   Lock,
@@ -28,7 +27,6 @@ export type View =
   | 'staff'
   | 'reports'
   | 'project-detail'
-  | 'approvals'
   | 'client-overview'
   | 'client-updates'
   | 'client-documents'
@@ -48,7 +46,6 @@ interface SidebarProps {
   onToggle: () => void;
   role: Role;
   jobPosition?: string;
-  pendingApprovalsCount?: number;
   pendingLeaveCount?: number;
   pendingDeletionCount?: number;
 }
@@ -76,7 +73,6 @@ function GSILogo({ size = 'large' }: { size?: 'small' | 'large' }) {
 function buildMenu(
   role: Role,
   jobPosition: string | undefined,
-  pendingApprovalsCount: number,
   pendingLeaveCount: number,
   pendingDeletionCount: number,
 ): MenuItem[] {
@@ -154,7 +150,6 @@ function buildMenu(
     { id: 'projects',      label: 'Projects',      icon: FolderKanban },
     { id: 'tasks',         label: 'Tasks',         icon: ClipboardList },
     { id: 'reports',       label: 'Reports',       icon: FileBarChart },
-    { id: 'approvals',     label: 'Approvals',     icon: ShieldCheck, badge: pendingApprovalsCount },
     { id: 'activity-logs', label: 'Activity Logs', icon: ScrollText },
     { id: 'system-settings', label: 'System Settings', icon: Settings },
   ];
@@ -167,11 +162,10 @@ export function Sidebar({
   onToggle,
   role,
   jobPosition,
-  pendingApprovalsCount = 0,
   pendingLeaveCount = 0,
   pendingDeletionCount = 0,
 }: SidebarProps) {
-  const menuItems = buildMenu(role, jobPosition, pendingApprovalsCount, pendingLeaveCount, pendingDeletionCount);
+  const menuItems = buildMenu(role, jobPosition, pendingLeaveCount, pendingDeletionCount);
   const isClient = role === 'Client';
 
   // Subtitle shown under logo
