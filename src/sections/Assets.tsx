@@ -27,9 +27,9 @@ interface AssetsProps {
   equipment: Equipment[];
   projects: Project[];
   currentUser: User;
-  onDeployVehicle: (vehicleId: string, projectId: string, projectName: string) => void;
+  onDeployVehicle: (vehicleId: string, projectId: string, projectName: string, dispatchDate?: string, plannedReturnDate?: string) => void;
   onReturnVehicle: (vehicleId: string) => void;
-  onDeployEquipment: (equipmentId: string, projectId: string, projectName: string) => void;
+  onDeployEquipment: (equipmentId: string, projectId: string, projectName: string, dispatchDate?: string, plannedReturnDate?: string) => void;
   onReturnEquipment: (equipmentId: string) => void;
   onAddVehicle: (v: Vehicle) => void;
   onEditVehicle: (v: Vehicle) => void;
@@ -72,6 +72,8 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
   const [deployVehicleTarget, setDeployVehicleTarget] = useState<Vehicle | null>(null);
   const [deployEquipTarget, setDeployEquipTarget]     = useState<Equipment | null>(null);
   const [selectedProjectId, setSelectedProjectId]     = useState('');
+  const [deployDispatchDate, setDeployDispatchDate]   = useState('');
+  const [deployReturnDate, setDeployReturnDate]       = useState('');
 
   const [addVehicleOpen, setAddVehicleOpen] = useState(false);
   const [vehicleForm, setVehicleForm]       = useState(EMPTY_VEHICLE);
@@ -121,17 +123,21 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
   const handleDeployVehicle = () => {
     if (!deployVehicleTarget || !selectedProjectId) return;
     const project = projects.find(p => p.id === selectedProjectId);
-    if (project) onDeployVehicle(deployVehicleTarget.id, selectedProjectId, project.name);
+    if (project) onDeployVehicle(deployVehicleTarget.id, selectedProjectId, project.name, deployDispatchDate || undefined, deployReturnDate || undefined);
     setDeployVehicleTarget(null);
     setSelectedProjectId('');
+    setDeployDispatchDate('');
+    setDeployReturnDate('');
   };
 
   const handleDeployEquip = () => {
     if (!deployEquipTarget || !selectedProjectId) return;
     const project = projects.find(p => p.id === selectedProjectId);
-    if (project) onDeployEquipment(deployEquipTarget.id, selectedProjectId, project.name);
+    if (project) onDeployEquipment(deployEquipTarget.id, selectedProjectId, project.name, deployDispatchDate || undefined, deployReturnDate || undefined);
     setDeployEquipTarget(null);
     setSelectedProjectId('');
+    setDeployDispatchDate('');
+    setDeployReturnDate('');
   };
 
   const handleAddVehicleSubmit = (e: React.FormEvent) => {
@@ -235,6 +241,12 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                           {vehicle.driver && <span className="text-slate-400 ml-2">Driver: {vehicle.driver}</span>}
                         </p>
                       )}
+                      {vehicle.status === 'Deployed' && (vehicle.dispatchDate || vehicle.plannedReturnDate) && (
+                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                          {vehicle.dispatchDate && <span>Dispatch: {new Date(vehicle.dispatchDate).toLocaleDateString()}</span>}
+                          {vehicle.plannedReturnDate && <span>Return: {new Date(vehicle.plannedReturnDate).toLocaleDateString()}</span>}
+                        </p>
+                      )}
                       {vehicle.lastService && (
                         <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                           <Clock className="w-3 h-3" /> Last service: {new Date(vehicle.lastService).toLocaleDateString()}
@@ -250,7 +262,7 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                     )}
                     {vehicle.status === 'Available' && (
                       <>
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setDeployVehicleTarget(vehicle); setSelectedProjectId(''); }}>
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setDeployVehicleTarget(vehicle); setSelectedProjectId(''); setDeployDispatchDate(''); setDeployReturnDate(''); }}>
                           Deploy
                         </Button>
                         <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setAssetConfirm({ type: 'maintenance-vehicle', id: vehicle.id, name: vehicle.name })}>
@@ -306,6 +318,12 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                           <MapPin className="w-3 h-3" /> {equip.assignedProjectName}
                         </p>
                       )}
+                      {equip.status === 'Deployed' && (equip.dispatchDate || equip.plannedReturnDate) && (
+                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                          {equip.dispatchDate && <span>Dispatch: {new Date(equip.dispatchDate).toLocaleDateString()}</span>}
+                          {equip.plannedReturnDate && <span>Return: {new Date(equip.plannedReturnDate).toLocaleDateString()}</span>}
+                        </p>
+                      )}
                       {equip.lastCalibration && (
                         <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                           <Clock className="w-3 h-3" /> Last calibration: {new Date(equip.lastCalibration).toLocaleDateString()}
@@ -321,7 +339,7 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                     )}
                     {equip.status === 'Available' && (
                       <>
-                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => { setDeployEquipTarget(equip); setSelectedProjectId(''); }}>
+                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => { setDeployEquipTarget(equip); setSelectedProjectId(''); setDeployDispatchDate(''); setDeployReturnDate(''); }}>
                           Deploy
                         </Button>
                         <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setAssetConfirm({ type: 'maintenance-equip', id: equip.id, name: equip.name })}>
@@ -364,6 +382,16 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Dispatch Date</Label>
+                <Input type="date" value={deployDispatchDate} onChange={e => setDeployDispatchDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Planned Return</Label>
+                <Input type="date" value={deployReturnDate} onChange={e => setDeployReturnDate(e.target.value)} />
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeployVehicleTarget(null)}>Cancel</Button>
@@ -388,6 +416,16 @@ export function Assets({ vehicles, equipment, projects, onDeployVehicle, onRetur
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Dispatch Date</Label>
+                <Input type="date" value={deployDispatchDate} onChange={e => setDeployDispatchDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Planned Return</Label>
+                <Input type="date" value={deployReturnDate} onChange={e => setDeployReturnDate(e.target.value)} />
+              </div>
             </div>
           </div>
           <DialogFooter>

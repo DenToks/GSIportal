@@ -574,9 +574,9 @@ function App() {
   };
 
   // --- Asset handlers -------------------------------------------------------
-  const handleDeployVehicle = (vehicleId: string, projectId: string, projectName: string) => {
+  const handleDeployVehicle = (vehicleId: string, projectId: string, projectName: string, dispatchDate?: string, plannedReturnDate?: string) => {
     setVehicles(prev => prev.map(v =>
-      v.id === vehicleId ? { ...v, status: 'Deployed', assignedProjectId: projectId, assignedProjectName: projectName } : v,
+      v.id === vehicleId ? { ...v, status: 'Deployed', assignedProjectId: projectId, assignedProjectName: projectName, dispatchDate: dispatchDate || undefined, plannedReturnDate: plannedReturnDate || undefined } : v,
     ));
     pushLog('Deployed vehicle to project', projectName);
   };
@@ -589,9 +589,9 @@ function App() {
     if (v?.assignedProjectName) pushLog('Returned vehicle from project', v.assignedProjectName);
   };
 
-  const handleDeployEquipment = (equipId: string, projectId: string, projectName: string) => {
+  const handleDeployEquipment = (equipId: string, projectId: string, projectName: string, dispatchDate?: string, plannedReturnDate?: string) => {
     setEquipment(prev => prev.map(e =>
-      e.id === equipId ? { ...e, status: 'Deployed', assignedProjectId: projectId, assignedProjectName: projectName } : e,
+      e.id === equipId ? { ...e, status: 'Deployed', assignedProjectId: projectId, assignedProjectName: projectName, dispatchDate: dispatchDate || undefined, plannedReturnDate: plannedReturnDate || undefined } : e,
     ));
     pushLog('Deployed equipment to project', projectName);
   };

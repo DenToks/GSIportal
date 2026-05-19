@@ -200,6 +200,8 @@ export interface Vehicle {
   assignedProjectName?: string;
   driver?: string;
   lastService?: string;
+  dispatchDate?: string;
+  plannedReturnDate?: string;
 }
 
 export interface Equipment {
@@ -211,6 +213,8 @@ export interface Equipment {
   assignedProjectId?: string;
   assignedProjectName?: string;
   lastCalibration?: string;
+  dispatchDate?: string;
+  plannedReturnDate?: string;
 }
 
 export interface ActivityLog {
