@@ -13,8 +13,6 @@ import {
   Clock,
   Truck,
   Wrench,
-  Search,
-  UserPlus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -129,16 +127,6 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
         return !u || u.role === 'Staff';
       })
     : staffList;
-
-  // Project staff pool for TI Supervisor drag-to-task assignment
-  const projectStaffPool = isSupervisor
-    ? staffList.filter(s => {
-        if (!project.team.includes(s.name)) return false;
-        if (s.name === project.manager) return false;
-        const u = users.find(u => u.name === s.name || u.email.toLowerCase() === s.email.toLowerCase());
-        return !u || u.role === 'Staff';
-      })
-    : [];
 
   // PM Supervisor only picks PM Staff for assignment
   const pickablePMStaff = isPMSupervisor
@@ -309,19 +297,12 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
   const [assignPMStaff, setAssignPMStaff] = useState<string[]>(project.manager ? [project.manager] : []);
   const [pmStaffConfirm, setPMStaffConfirm] = useState(false);
   const [teamConfirm, setTeamConfirm] = useState(false);
-  const [taskAssignConfirm, setTaskAssignConfirm] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState<'archive' | 'restore' | null>(null);
 
   const [completeDialogTask, setCompleteDialogTask] = useState<Task | null>(null);
   const [completionNote, setCompletionNote] = useState('');
   const [completionFile, setCompletionFile] = useState<File | null>(null);
   const completionFileRef = useRef<HTMLInputElement>(null);
-  const [draggedStaff, setDraggedStaff] = useState<string | null>(null);
-  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
-  const [staffPoolSearch, setStaffPoolSearch] = useState('');
-  const [assignStaffTask, setAssignStaffTask] = useState<Task | null>(null);
-  const [assignDialogSearch, setAssignDialogSearch] = useState('');
-  const [assignDialogSelected, setAssignDialogSelected] = useState<string[]>([]);
 
   const handleCompleteSubmit = () => {
     if (!completeDialogTask || !completionNote.trim()) return;
@@ -620,7 +601,7 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
 
         <TabsContent value="tasks" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">{isSupervisor ? 'Assign Staff to Tasks' : 'Project Tasks'}</h3>
+            <h3 className="text-lg font-semibold">Project Tasks</h3>
             {isPMStaff && (
               <Button size="sm" onClick={() => { setEditingTask(null); setTaskForm(EMPTY_TASK); setTaskDialogOpen(true); }}>
                 <ClipboardList className="w-4 h-4 mr-2" />
@@ -629,197 +610,88 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
             )}
           </div>
 
-          {isSupervisor ? (
-            <div className="flex gap-6">
-              {/* Task cards — drop zones */}
-              <div className="flex-1 space-y-3">
-                {tasks.length === 0 ? (
-                  <div className="text-center py-8">
-                    <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-500">No tasks created yet. PM Staff creates tasks first.</p>
-                  </div>
-                ) : tasks.map(task => (
-                  <div
-                    key={task.id}
-                    onDragOver={e => { e.preventDefault(); setDragOverTaskId(task.id); }}
-                    onDragLeave={() => setDragOverTaskId(null)}
-                    onDrop={() => {
-                      if (draggedStaff && !task.assignedTo.includes(draggedStaff)) {
-                        onEditTask({ ...task, assignedTo: [...task.assignedTo, draggedStaff] });
-                      }
-                      setDraggedStaff(null);
-                      setDragOverTaskId(null);
-                    }}
-                  >
-                    <Card className={`transition-colors ${dragOverTaskId === task.id ? 'border-blue-400 border-2 border-dashed bg-blue-50' : ''}`}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-medium text-slate-800">{task.title}</h4>
-                            <Badge variant="outline" className={getTaskStatusColor(task.status)}>{task.status}</Badge>
-                            <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs shrink-0"
-                            onClick={() => {
-                              setAssignStaffTask(task);
-                              setAssignDialogSelected([...task.assignedTo]);
-                              setAssignDialogSearch('');
-                            }}
-                          >
-                            <UserPlus className="w-3 h-3 mr-1" />
-                            Assign
-                          </Button>
-                        </div>
-                        {task.description && <p className="text-sm text-slate-500 mb-2">{task.description}</p>}
-                        <div className="flex flex-wrap gap-1 items-center min-h-[28px]">
-                          {task.assignedTo.length > 0 ? task.assignedTo.map(name => (
-                            <span key={name} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs">
-                              {name}
-                              <button
-                                className="ml-0.5 text-green-600 hover:text-red-500 leading-none"
-                                onClick={() => onEditTask({ ...task, assignedTo: task.assignedTo.filter(n => n !== name) })}
-                              >×</button>
-                            </span>
-                          )) : (
-                            <span className="text-xs text-slate-400 italic">
-                              {dragOverTaskId === task.id ? 'Drop to assign' : 'No staff assigned — drag from pool →'}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          Due {new Date(task.dueDate).toLocaleDateString()}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ))}
-              </div>
-
-              {/* Staff pool — draggable chips */}
-              <div className="w-52 shrink-0">
-                <div className="sticky top-4 bg-slate-50 rounded-xl border border-slate-200 p-3">
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Staff Pool</p>
-                  {projectStaffPool.length > 0 && (
-                    <div className="relative mb-2">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-                      <input
-                        className="w-full pl-6 pr-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400"
-                        placeholder="Search..."
-                        value={staffPoolSearch}
-                        onChange={e => setStaffPoolSearch(e.target.value)}
-                      />
-                    </div>
-                  )}
-                  {projectStaffPool.length === 0 ? (
-                    <p className="text-xs text-slate-400 leading-relaxed">No staff in project team yet. Use "Assign Team" to add staff first.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {projectStaffPool
-                        .filter(s => s.name.toLowerCase().includes(staffPoolSearch.toLowerCase()))
-                        .map(staff => (
-                        <div
-                          key={staff.name}
-                          draggable
-                          onDragStart={() => setDraggedStaff(staff.name)}
-                          onDragEnd={() => { setDraggedStaff(null); setDragOverTaskId(null); }}
-                          className="cursor-grab active:cursor-grabbing px-3 py-2 rounded-lg bg-white border border-green-200 text-sm text-green-800 hover:bg-green-50 select-none shadow-sm"
-                        >
-                          {staff.name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {tasks.map((task) => (
-                <Card key={task.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-medium text-slate-800">{task.title}</h4>
-                          <Badge variant="outline" className={getTaskStatusColor(task.status)}>
-                            {task.status}
-                          </Badge>
-                          <Badge className={getPriorityColor(task.priority)}>
-                            {task.priority}
-                          </Badge>
-                          {(task.attachments?.length ?? 0) > 0 && (
-                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                              <FileText className="w-3 h-3" />
-                              {task.attachments!.length} proof file{task.attachments!.length > 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-500 mt-1">{task.description}</p>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
-                          <span className="flex items-center gap-1">
-                            <Users className="w-4 h-4" />
-                            {task.assignedTo.join(', ')}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            Due {new Date(task.dueDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {task.completionNote && (
-                          <div className="mt-2 bg-green-50 border border-green-100 rounded px-3 py-2 text-sm text-green-800">
-                            <span className="font-medium">Completion note: </span>{task.completionNote}
-                          </div>
-                        )}
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <Card key={task.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-medium text-slate-800">{task.title}</h4>
+                        <Badge variant="outline" className={getTaskStatusColor(task.status)}>
+                          {task.status}
+                        </Badge>
+                        <Badge className={getPriorityColor(task.priority)}>
+                          {task.priority}
+                        </Badge>
                         {(task.attachments?.length ?? 0) > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {task.attachments!.map(att => (
-                              <div key={att.id} className="flex items-center gap-2 text-xs bg-slate-50 rounded px-2 py-1 w-fit">
-                                <FileText className="w-3 h-3 text-blue-500" />
-                                <span className="text-slate-700">{att.name}</span>
-                                <span className="text-slate-400">{att.size}</span>
-                                <button onClick={() => handleDownloadAttachment(att)} className="text-blue-500 hover:underline">Download</button>
-                              </div>
-                            ))}
-                          </div>
+                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            {task.attachments!.length} proof file{task.attachments!.length > 1 ? 's' : ''}
+                          </span>
                         )}
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {isPMStaff && (
-                            <DropdownMenuItem onClick={() => setTimeout(() => openEditTask(task), 0)}>Edit Task</DropdownMenuItem>
-                          )}
-                          {isStaff && (
-                            <DropdownMenuItem onClick={() => handleProofUploadClick(task.id)}>Upload Proof</DropdownMenuItem>
-                          )}
-                          {task.status !== 'Completed' && isPMStaff && (
-                            <DropdownMenuItem onClick={() => onUpdateTaskStatus?.(task.id, 'Completed')}>Mark as Complete</DropdownMenuItem>
-                          )}
-                          {task.status !== 'Completed' && isStaff && (
-                            <DropdownMenuItem onClick={() => { setCompleteDialogTask(task); setCompletionNote(''); setCompletionFile(null); }}>Mark as Complete</DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <p className="text-sm text-slate-500 mt-1">{task.description}</p>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          {task.assignedTo.join(', ')}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          Due {new Date(task.dueDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {task.completionNote && (
+                        <div className="mt-2 bg-green-50 border border-green-100 rounded px-3 py-2 text-sm text-green-800">
+                          <span className="font-medium">Completion note: </span>{task.completionNote}
+                        </div>
+                      )}
+                      {(task.attachments?.length ?? 0) > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {task.attachments!.map(att => (
+                            <div key={att.id} className="flex items-center gap-2 text-xs bg-slate-50 rounded px-2 py-1 w-fit">
+                              <FileText className="w-3 h-3 text-blue-500" />
+                              <span className="text-slate-700">{att.name}</span>
+                              <span className="text-slate-400">{att.size}</span>
+                              <button onClick={() => handleDownloadAttachment(att)} className="text-blue-500 hover:underline">Download</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {tasks.length === 0 && (
-                <div className="text-center py-8">
-                  <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-500">No tasks assigned to this project yet</p>
-                </div>
-              )}
-            </div>
-          )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {isPMStaff && (
+                          <DropdownMenuItem onClick={() => setTimeout(() => openEditTask(task), 0)}>Edit Task</DropdownMenuItem>
+                        )}
+                        {isStaff && (
+                          <DropdownMenuItem onClick={() => handleProofUploadClick(task.id)}>Upload Proof</DropdownMenuItem>
+                        )}
+                        {task.status !== 'Completed' && isPMStaff && (
+                          <DropdownMenuItem onClick={() => onUpdateTaskStatus?.(task.id, 'Completed')}>Mark as Complete</DropdownMenuItem>
+                        )}
+                        {task.status !== 'Completed' && isStaff && (
+                          <DropdownMenuItem onClick={() => { setCompleteDialogTask(task); setCompletionNote(''); setCompletionFile(null); }}>Mark as Complete</DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {tasks.length === 0 && (
+              <div className="text-center py-8">
+                <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500">No tasks assigned to this project yet</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-4">
@@ -1101,6 +973,27 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
                 onChange={e => setTaskField('dueDate', e.target.value)}
               />
             </div>
+
+            {project.team.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Assign Staff</Label>
+                <div className="space-y-1 max-h-36 overflow-y-auto border border-slate-200 rounded-lg p-2">
+                  {project.team.map(name => (
+                    <label key={name} className="flex items-center gap-2 p-1 hover:bg-slate-50 cursor-pointer rounded">
+                      <Checkbox
+                        checked={taskForm.assignedTo.includes(name)}
+                        onCheckedChange={checked =>
+                          setTaskField('assignedTo', checked
+                            ? [...taskForm.assignedTo, name]
+                            : taskForm.assignedTo.filter(n => n !== name))
+                        }
+                      />
+                      <span className="text-sm text-slate-800">{name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setTaskDialogOpen(false)}>Cancel</Button>
@@ -1408,95 +1301,6 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Save Changes</Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* TI Supervisor — Assign Staff to Task Dialog */}
-      <Dialog open={!!assignStaffTask} onOpenChange={open => { if (!open) { setAssignStaffTask(null); setTaskAssignConfirm(false); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Assign Staff to Task</DialogTitle>
-          </DialogHeader>
-          {!taskAssignConfirm ? (
-            <>
-              <div className="space-y-3 py-2">
-                {assignStaffTask && (
-                  <div className="bg-slate-50 rounded-lg p-2 text-sm font-medium text-slate-700">
-                    {assignStaffTask.title}
-                  </div>
-                )}
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    placeholder="Search staff..."
-                    value={assignDialogSearch}
-                    onChange={e => setAssignDialogSearch(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-                <div className="space-y-1 max-h-52 overflow-y-auto">
-                  {projectStaffPool
-                    .filter(s => s.name.toLowerCase().includes(assignDialogSearch.toLowerCase()))
-                    .map(staff => (
-                      <label
-                        key={staff.name}
-                        className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={assignDialogSelected.includes(staff.name)}
-                          onCheckedChange={checked => {
-                            setAssignDialogSelected(prev =>
-                              checked ? [...prev, staff.name] : prev.filter(n => n !== staff.name)
-                            );
-                          }}
-                        />
-                        <span className="text-sm text-slate-800">{staff.name}</span>
-                      </label>
-                    ))}
-                  {projectStaffPool.filter(s => s.name.toLowerCase().includes(assignDialogSearch.toLowerCase())).length === 0 && (
-                    <p className="text-xs text-slate-400 text-center py-4">No staff found</p>
-                  )}
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAssignStaffTask(null)}>Cancel</Button>
-                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setTaskAssignConfirm(true)}>
-                  Review Assignment
-                </Button>
-              </DialogFooter>
-            </>
-          ) : (
-            <>
-              <div className="space-y-4 py-2">
-                <p className="text-sm font-medium text-slate-600">Please confirm the following assignment:</p>
-                <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Task</span>
-                    <span className="font-medium text-slate-800 text-right max-w-[60%]">{assignStaffTask?.title}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Assigned Staff ({assignDialogSelected.length})</span>
-                    <span className="font-medium text-slate-800 text-right max-w-[60%]">
-                      {assignDialogSelected.length > 0 ? assignDialogSelected.join(', ') : <span className="text-slate-400">None</span>}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-400">Click Confirm to apply this assignment.</p>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setTaskAssignConfirm(false)}>Go Back</Button>
-                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
-                  if (assignStaffTask) {
-                    onEditTask({ ...assignStaffTask, assignedTo: assignDialogSelected });
-                  }
-                  setTaskAssignConfirm(false);
-                  setAssignStaffTask(null);
-                }}>
-                  Confirm Assignment
-                </Button>
-              </DialogFooter>
-            </>
-          )}
         </DialogContent>
       </Dialog>
 
