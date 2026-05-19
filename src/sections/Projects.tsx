@@ -43,6 +43,7 @@ interface ProjectsProps {
   onProjectClick: (projectId: string) => void;
   onAddProject: (project: Project) => void;
   onEditProject: (updated: Project) => void;
+  onAssignClientToProject?: (clientUserId: string, projectId: string) => void;
   role?: Role;
   jobPosition?: string;
   currentUser?: User;
@@ -85,7 +86,7 @@ const getTypeColor = (type: string) => {
   }
 };
 
-export function Projects({ projects, onProjectClick, onAddProject, onEditProject, role, jobPosition, currentUser, users = [] }: ProjectsProps) {
+export function Projects({ projects, onProjectClick, onAddProject, onEditProject, onAssignClientToProject, role, jobPosition, currentUser, users = [] }: ProjectsProps) {
   const isBDSupervisor  = role === 'Project Manager' && jobPosition === 'BD Supervisor';
   const isPMSupervisor  = role === 'Project Manager' && jobPosition === 'PM Supervisor';
   const isPMStaff       = role === 'Project Manager' && jobPosition === 'PM Staff';
@@ -94,6 +95,8 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
 
   // PM Staff users available for project assignment (PM Supervisor only)
   const pmStaffUsers = users.filter(u => u.role === 'Project Manager' && u.jobPosition === 'PM Staff');
+  // Client users available for project linking (BD Supervisor only)
+  const clientUsers = users.filter(u => u.role === 'Client');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -104,6 +107,7 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [createConfirm, setCreateConfirm] = useState(false);
+  const [selectedClientUserId, setSelectedClientUserId] = useState('');
 
   // PM Supervisor: assign project to PM Staff
   const [assignPMOpen, setAssignPMOpen] = useState(false);
@@ -169,6 +173,9 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
       description: project.description,
       team: project.team,
     });
+    // Pre-select client user if one matches
+    const matched = clientUsers.find(u => u.name === project.client || u.clientProjectIds?.includes(project.id));
+    setSelectedClientUserId(matched?.id ?? '');
     setDialogOpen(true);
   };
 
@@ -178,6 +185,9 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
       const { assignedPMId, ...rest } = form;
       const projectData = assignedPMId ? { ...rest, assignedPMId } : rest;
       onEditProject({ ...editingProject, ...projectData });
+      if (selectedClientUserId && onAssignClientToProject) {
+        onAssignClientToProject(selectedClientUserId, editingProject.id);
+      }
       setDialogOpen(false);
     } else {
       setCreateConfirm(true);
@@ -187,7 +197,12 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
   const handleConfirmCreate = () => {
     const { assignedPMId, ...rest } = form;
     const projectData = assignedPMId ? { ...rest, assignedPMId } : rest;
-    onAddProject({ id: `PRJ-${Date.now()}`, ...projectData });
+    const newId = `PRJ-${Date.now()}`;
+    onAddProject({ id: newId, ...projectData });
+    if (selectedClientUserId && onAssignClientToProject) {
+      onAssignClientToProject(selectedClientUserId, newId);
+    }
+    setSelectedClientUserId('');
     setDialogOpen(false);
     setCreateConfirm(false);
   };
@@ -500,14 +515,32 @@ export function Projects({ projects, onProjectClick, onAddProject, onEditProject
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="proj-client">Client <span className="text-red-500">*</span></Label>
-                <Input
-                  id="proj-client"
-                  value={form.client}
-                  onChange={e => setField('client', e.target.value)}
-                  placeholder="e.g. DPWH Region 7"
-                  required
-                />
+                <Label>Client <span className="text-red-500">*</span></Label>
+                {isBDSupervisor && clientUsers.length > 0 ? (
+                  <Select
+                    value={selectedClientUserId}
+                    onValueChange={v => {
+                      setSelectedClientUserId(v);
+                      const u = clientUsers.find(c => c.id === v);
+                      if (u) setField('client', u.name);
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select a client account" /></SelectTrigger>
+                    <SelectContent>
+                      {clientUsers.map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="proj-client"
+                    value={form.client}
+                    onChange={e => setField('client', e.target.value)}
+                    placeholder="e.g. DPWH Region 7"
+                    required
+                  />
+                )}
               </div>
 
               <div className="space-y-1.5">

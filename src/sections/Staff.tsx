@@ -767,19 +767,6 @@ export function Staff({
                 </Select>
               </div>
             )}
-            {editForm.systemRole === 'Client' && (
-              <div className="space-y-1.5">
-                <Label>Assigned Project</Label>
-                <Select value={editForm.clientProjectId} onValueChange={v => setEditForm(p => ({ ...p, clientProjectId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select a project" /></SelectTrigger>
-                  <SelectContent>
-                    {projects.filter(p => p.stage !== 'Archived').map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>

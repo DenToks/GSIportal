@@ -449,6 +449,12 @@ function App() {
     ));
   };
 
+  const handleAssignClientToProject = (clientUserId: string, projectId: string) => {
+    setUsers(prev => prev.map(u =>
+      u.id === clientUserId ? { ...u, clientProjectIds: [projectId] } : u
+    ));
+  };
+
   const handleUpdateStaffSystemRole = (staffId: string, systemRole: string) => {
     setStaffList(prev => prev.map(s => s.id === staffId ? { ...s, systemRole } : s));
   };
@@ -677,6 +683,7 @@ function App() {
               onProjectClick={handleProjectClick}
               onAddProject={handleAddProject}
               onEditProject={handleEditProject}
+              onAssignClientToProject={handleAssignClientToProject}
               role={currentUser.role}
               jobPosition={jobPosition}
               currentUser={currentUser}
