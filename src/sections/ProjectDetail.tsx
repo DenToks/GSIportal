@@ -129,6 +129,32 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
       })
     : staffList;
 
+  // Certification keywords mapped to each project type for auto-matching
+  const certKeywordsForProjectType: Record<string, string[]> = {
+    'Geotechnical': ['Geotechnical', 'PICE', 'PGFE', 'ASEP'],
+    'Geoscience': ['Geoscience', 'Geology', 'Geologic', 'PGFI'],
+    'Environmental': ['Environmental', 'EIA', 'Environmental Planner'],
+    'Civil Infrastructure': ['Civil', 'PICE', 'Infrastructure'],
+    'Geohazard': ['Hazard', 'Geotechnical', 'PGFE'],
+  };
+
+  const computeAutoSuggestions = (staff: StaffType[], projectType: string, count = 4): string[] => {
+    const keywords = certKeywordsForProjectType[projectType] ?? [];
+    return staff
+      .filter(s => s.status === 'Available')
+      .map(s => ({
+        name: s.name,
+        score: (s.certifications ?? []).filter(c => keywords.some(k => c.includes(k))).length * 10
+               + (100 - (s.workload ?? 50)),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, count)
+      .map(s => s.name);
+  };
+
+  // Pre-computed set of auto-suggested names for badge display in the dialog
+  const autoSuggestedNames = new Set(computeAutoSuggestions(pickableStaff, project.type));
+
   // PM Supervisor only picks PM Staff for assignment
   const pickablePMStaff = isPMSupervisor
     ? users
@@ -404,7 +430,12 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
         </div>
         <div className="flex items-center gap-2">
           {isSupervisor && (
-            <Button variant="outline" onClick={() => { setAssignTeam(project.team.filter(n => n !== project.manager)); setTeamConfirm(false); setAssignTeamOpen(true); }}>
+            <Button variant="outline" onClick={() => {
+                const alreadyInTeam = project.team.filter(n => n !== project.manager);
+                setAssignTeam(alreadyInTeam.length > 0 ? alreadyInTeam : computeAutoSuggestions(pickableStaff, project.type));
+                setTeamConfirm(false);
+                setAssignTeamOpen(true);
+              }}>
               <Users className="w-4 h-4 mr-2" />
               Assign Team
             </Button>
@@ -1106,9 +1137,11 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
           {!teamConfirm ? (
             <>
               <div className="space-y-4 py-2">
-                <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700 flex items-start gap-2">
-                  <span className="mt-0.5">💡</span>
-                  <span>Suggested staff are automatically ranked by availability and qualifications. Select staff to assign to this project.</span>
+                <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800 flex items-start gap-2">
+                  <span className="mt-0.5">✅</span>
+                  <span>
+                    <strong>System Recommendation Active</strong> — Staff have been automatically selected based on project type (<em>{project.type}</em>) and certifications. You may adjust the selection or confirm as-is.
+                  </span>
                 </div>
                 {project.manager && (
                   <div className="space-y-1.5">
@@ -1156,8 +1189,11 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-medium text-slate-800">{staff.name}</span>
-                                {isAvailable && (
-                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">SUGGESTED</span>
+                                {autoSuggestedNames.has(staff.name) && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800">AUTO-SELECTED</span>
+                                )}
+                                {isSelected && !autoSuggestedNames.has(staff.name) && isAvailable && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">MANUALLY ADDED</span>
                                 )}
                                 {isAssigned && (
                                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">ALREADY ASSIGNED</span>
@@ -1184,10 +1220,13 @@ export function ProjectDetail({ project, tasks, onBack, onEditProject, onDeleteP
                   </div>
                 </div>
               </div>
+              <p className="text-xs text-slate-400 mt-1">
+                {assignTeam.length} staff selected · {assignTeam.filter(n => autoSuggestedNames.has(n)).length} auto-selected · {assignTeam.filter(n => !autoSuggestedNames.has(n)).length} manually added
+              </p>
               <DialogFooter className="pt-2">
                 <Button variant="outline" onClick={() => setAssignTeamOpen(false)}>Cancel</Button>
                 <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setTeamConfirm(true)}>
-                  Review Assignment
+                  Review &amp; Confirm
                 </Button>
               </DialogFooter>
             </>
