@@ -443,6 +443,12 @@ function App() {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, jobPosition } : u));
   };
 
+  const handleUpdateClientProject = (userId: string, projectId: string) => {
+    setUsers(prev => prev.map(u =>
+      u.id === userId ? { ...u, clientProjectIds: projectId ? [projectId] : [] } : u
+    ));
+  };
+
   const handleUpdateStaffSystemRole = (staffId: string, systemRole: string) => {
     setStaffList(prev => prev.map(s => s.id === staffId ? { ...s, systemRole } : s));
   };
@@ -703,6 +709,7 @@ function App() {
               onAddStaff={handleAddStaff}
               onAddUser={handleAddUser}
               onUpdateStaff={(staffId, updates) => setStaffList(prev => prev.map(s => s.id === staffId ? { ...s, ...updates } : s))}
+              onUpdateClientProject={handleUpdateClientProject}
             />
           )}
           {!isClient && currentView === 'reports' && (

@@ -60,6 +60,7 @@ interface StaffProps {
   onAddStaff: (member: StaffType) => void;
   onAddUser: (user: User) => void;
   onUpdateStaff: (staffId: string, updates: Partial<StaffType>) => void;
+  onUpdateClientProject: (userId: string, projectId: string) => void;
 }
 
 const EMPTY_STAFF_FORM = {
@@ -146,6 +147,7 @@ export function Staff({
   onAddStaff,
   onAddUser,
   onUpdateStaff,
+  onUpdateClientProject,
 }: StaffProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -166,7 +168,7 @@ export function Staff({
 
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<StaffType | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', department: '', systemRole: 'Staff', jobPosition: '' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', department: '', systemRole: 'Staff', jobPosition: '', clientProjectId: '' });
 
   const isAdminAccount = (member: StaffType) => {
     const matchedUser = users.find(
@@ -316,6 +318,7 @@ export function Staff({
       department: member.department ?? '',
       systemRole: u ? getRoleFamilyFromLabel(u.jobPosition ?? u.role) : (member.systemRole ?? 'Staff'),
       jobPosition: u?.jobPosition ?? member.systemRole ?? '',
+      clientProjectId: u?.clientProjectIds?.[0] ?? '',
     });
     setEditOpen(true);
   };
@@ -337,6 +340,9 @@ export function Staff({
     if (u) {
       onDirectRoleChange(u.id, editForm.systemRole as Role);
       onUpdateUserJobPosition(u.id, nextLabel);
+      if (editForm.systemRole === 'Client') {
+        onUpdateClientProject(u.id, editForm.clientProjectId);
+      }
     }
     onUpdateStaffSystemRole(editTarget.id, nextLabel);
     setEditOpen(false);
@@ -756,6 +762,19 @@ export function Staff({
                   <SelectContent>
                     {JOB_POSITIONS[editForm.systemRole].map(pos => (
                       <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {editForm.systemRole === 'Client' && (
+              <div className="space-y-1.5">
+                <Label>Assigned Project</Label>
+                <Select value={editForm.clientProjectId} onValueChange={v => setEditForm(p => ({ ...p, clientProjectId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select a project" /></SelectTrigger>
+                  <SelectContent>
+                    {projects.filter(p => p.stage !== 'Archived').map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
