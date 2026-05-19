@@ -58,7 +58,7 @@ const storageKey = (name: string) => `gsi_${STORAGE_VERSION}_${name}`;
 
 function App() {
   const [showLanding, setShowLanding] = useState(true);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>(() => {
@@ -101,6 +101,9 @@ function App() {
       return initialUsers;
     }
   });
+  // Derive currentUser live from users so updates (e.g. clientProjectIds) are always reflected
+  const currentUser = currentUserId ? (users.find(u => u.id === currentUserId) ?? null) : null;
+
   const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => {
     try {
       const stored = localStorage.getItem(storageKey('dailyReports'));
@@ -265,7 +268,7 @@ function App() {
   };
 
   const handleLogin = (user: User) => {
-    setCurrentUser(user);
+    setCurrentUserId(user.id);
     if (user.role === 'Client') setCurrentView('client-overview');
     else if (user.role === 'Supervisor') setCurrentView('staff');
     else if (user.jobPosition === 'BD Supervisor') setCurrentView('projects');
@@ -285,7 +288,7 @@ function App() {
   }, [exportState, importState, runDemoPlayback, clearStorageForDemo]);
 
   const handleLogout = () => {
-    setCurrentUser(null);
+    setCurrentUserId(null);
     setCurrentView('dashboard');
     setSelectedProjectId(null);
     setShowLanding(true);
