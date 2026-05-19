@@ -187,13 +187,21 @@ export function Dashboard({ projects, tasks, onProjectClick, onNavigate, current
 
   const taskNavTarget: View = role === 'Staff' || (role === 'Project Manager' && jobPosition === 'PM Staff') ? 'tasks' : 'tasks';
 
-  // Recent activity feed — Admin sees all, Staff sees their own + their projects
+  // Recent activity feed — filtered per role
   const recentActivity = (() => {
     const sorted = [...activityLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     if (role === 'Staff') {
       const myProjectNames = new Set(staffProjects.map(p => p.name));
       return sorted.filter(log =>
         log.userName === currentUser?.name || myProjectNames.has(log.target)
+      ).slice(0, 10);
+    }
+    if (role === 'Project Manager' && jobPosition === 'PM Supervisor') {
+      const action = (log: ActivityLog) => log.action.toLowerCase();
+      return sorted.filter(log =>
+        !action(log).includes('leave') &&
+        !action(log).includes('vehicle') &&
+        !action(log).includes('equipment')
       ).slice(0, 10);
     }
     return sorted.slice(0, 10);
